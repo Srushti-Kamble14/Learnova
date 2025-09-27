@@ -234,7 +234,7 @@ export default function FaceRecognizer() {
           Smart Attendance System
         </p>
 
-        <Link href="/register">
+        {/* <Link href="/register">
           <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold px-10 py-4 rounded-2xl shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-500 transform hover:scale-105 border border-purple-400/30 backdrop-blur-sm">
             <span className="flex items-center gap-3">
               <svg
@@ -253,7 +253,7 @@ export default function FaceRecognizer() {
               Register New Face
             </span>
           </Button>
-        </Link>
+        </Link> */}
       </div>
 
       <div className="relative w-full max-w-5xl aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-xl bg-white/5">

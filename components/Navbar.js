@@ -206,7 +206,7 @@ export function Navbar() {
                     <Button className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
-                        Make Attendance
+                        Mark Attendance
                         <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
                       </span>
                     </Button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar,
   Clock,
@@ -56,6 +57,7 @@ const TeacherDashboard = () => {
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
+  const { user } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 45,
     presentToday: 38,
@@ -71,6 +73,8 @@ const TeacherDashboard = () => {
   const [classSchedule, setClassSchedule] = useState({});
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showAllRequestsModal, setShowAllRequestsModal] = useState(false);
+  const [allRequests, setAllRequests] = useState([]);
 
   // Mock teacher data
   const [teacher] = useState({
@@ -221,30 +225,79 @@ const TeacherDashboard = () => {
     },
   ];
 
-  const exceptionRequests = [
-    {
-      id: 1,
-      student: "John Smith",
-      rollNo: "CS21B1010",
-      class: "Data Structures",
-      date: "2024-01-15",
-      reason: "Medical emergency",
-      location: "Home - GPS verified",
-      status: "pending",
-      timestamp: "09:15",
-    },
-    {
-      id: 2,
-      student: "Lisa Brown",
-      rollNo: "CS21B1015",
-      class: "Web Development",
-      date: "2024-01-15",
-      reason: "Transport issue",
-      location: "Bus stop - GPS verified",
-      status: "pending",
-      timestamp: "09:20",
-    },
-  ];
+const fetchAllRequests = async () => {
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch("/api/exceptions/all", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setAllRequests(data.exceptions);
+      setShowAllRequestsModal(true);
+    }
+  } catch (error) {
+    console.error("Failed to fetch all exception requests:", error);
+  }
+};
+
+  const [exceptionRequests, setExceptionRequests] = useState([]);
+
+  // Fetch exception requests
+  useEffect(() => {
+    const fetchExceptionRequests = async () => {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/exceptions/list", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setExceptionRequests(data.exceptions);
+        }
+      } catch (error) {
+        console.error("Failed to fetch exception requests:", error);
+      }
+    };
+
+    if (user) {
+      fetchExceptionRequests();
+      // Poll for updates every 30 seconds
+      const interval = setInterval(fetchExceptionRequests, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const handleExceptionRequest = async (id, action) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/exceptions/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          exceptionId: id,
+          status: action,
+          comments: `${
+            action === "approved" ? "Approved" : "Rejected"
+          } by teacher`,
+        }),
+      });
+
+      if (response.ok) {
+        setExceptionRequests((prev) =>
+          prev.map((req) => (req._id === id ? { ...req, status: action } : req))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update exception request:", error);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -294,14 +347,6 @@ const TeacherDashboard = () => {
     navigator.clipboard.writeText(currentPasscode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExceptionRequest = (id, action) => {
-    setAttendanceRequests((prev) =>
-      prev.map((req) =>
-        req.id === id ? { ...req, status: action } : req
-      )
-    );
   };
 
   const getStatusColor = (status) => {
@@ -369,7 +414,9 @@ const TeacherDashboard = () => {
             <div className="bg-black/20 rounded-xl p-4 border border-white/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-gray-400 mb-1">Active Passcode</div>
+                  <div className="text-sm text-gray-400 mb-1">
+                    Active Passcode
+                  </div>
                   <div className="text-2xl font-mono text-white font-bold tracking-wider">
                     {currentPasscode}
                   </div>
@@ -436,7 +483,9 @@ const TeacherDashboard = () => {
 
             {/* Current Class Attendance */}
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white">Current Class Attendance</h3>
+              <h3 className="text-lg font-bold text-white">
+                Current Class Attendance
+              </h3>
               <div className="space-y-2">
                 {studentAttendanceData.map((student) => (
                   <div
@@ -454,8 +503,12 @@ const TeacherDashboard = () => {
                         }`}
                       />
                       <div>
-                        <div className="text-white font-medium">{student.name}</div>
-                        <div className="text-gray-400 text-sm">{student.rollNo}</div>
+                        <div className="text-white font-medium">
+                          {student.name}
+                        </div>
+                        <div className="text-gray-400 text-sm">
+                          {student.rollNo}
+                        </div>
                       </div>
                     </div>
 
@@ -481,77 +534,263 @@ const TeacherDashboard = () => {
             </div>
           </div>
 
-          {/* Exception Requests */}
+          {/* Exception Requests - CORRECTED */}
           <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Exception Requests</h2>
-              <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
-                {exceptionRequests.filter((req) => req.status === "pending").length} Pending
-              </span>
+              <h2 className="text-2xl font-bold text-white">
+                Exception Requests
+              </h2>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={fetchAllRequests}
+                  className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-lg text-sm transition-colors flex items-center space-x-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>View All</span>
+                </button>
+                <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
+                  {
+                    exceptionRequests.filter((req) => req.status === "pending")
+                      .length
+                  }{" "}
+                  Pending
+                </span>
+              </div>
             </div>
 
             <div className="space-y-3">
-              {exceptionRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="text-white font-medium">{request.student}</div>
-                      <div className="text-gray-400 text-sm">{request.rollNo}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-white text-sm">{request.class}</div>
-                      <div className="text-gray-400 text-xs">{request.timestamp}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="text-sm text-gray-300">
-                      <strong>Reason:</strong> {request.reason}
-                    </div>
-                    <div className="text-sm text-gray-300">
-                      <strong>Location:</strong> {request.location}
-                    </div>
-                  </div>
-
-                  {request.status === "pending" && (
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={() => handleExceptionRequest(request.id, "approved")}
-                        className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 px-4 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Approve</span>
-                      </button>
-                      <button
-                        onClick={() => handleExceptionRequest(request.id, "rejected")}
-                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {request.status !== "pending" && (
-                    <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        request.status === "approved"
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                          : "bg-red-500/20 text-red-400 border border-red-500/30"
-                      }`}
-                    >
-                      {request.status.toUpperCase()}
-                    </div>
-                  )}
+              {exceptionRequests.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400">
+                    No exception requests at the moment
+                  </p>
                 </div>
-              ))}
+              ) : (
+                exceptionRequests.map((request) => (
+                  <div
+                    key={request._id || request.id}
+                    className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <div className="text-white font-medium">
+                          {request.studentName || request.student}
+                        </div>
+                        <div className="text-gray-400 text-sm">
+                          {request.studentId || request.rollNo}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-white text-sm">
+                          {request.className || request.class}
+                        </div>
+                        <div className="text-gray-400 text-xs">
+                          {request.createdAt
+                            ? new Date(request.createdAt).toLocaleString()
+                            : request.timestamp}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="text-sm text-gray-300">
+                        <strong>Reason:</strong> {request.reason}
+                      </div>
+                      {request.currentLocation && (
+                        <div className="text-sm text-gray-300">
+                          <strong>Current Location:</strong>{" "}
+                          {request.currentLocation}
+                        </div>
+                      )}
+
+                      {request.details && (
+                        <div className="text-sm text-gray-300">
+                          <strong>Details:</strong> {request.details}
+                        </div>
+                      )}
+                    </div>
+
+                    {request.status === "pending" && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() =>
+                            handleExceptionRequest(
+                              request._id || request.id,
+                              "approved"
+                            )
+                          }
+                          className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 px-4 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2"
+                          >
+                          <Check className="w-4 h-4" />
+                          <span>Approve</span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleExceptionRequest(
+                              request._id || request.id,
+                              "rejected"
+                            )
+                          }
+                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {request.status !== "pending" && (
+                      <div className="flex items-center justify-between">
+                        <div
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            request.status === "approved"
+                              ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                              : "bg-red-500/20 text-red-400 border border-red-500/30"
+                          }`}
+                        >
+                          {request.status.toUpperCase()}
+                        </div>
+                        {request.comments && (
+                          <div className="text-xs text-gray-400">
+                            {request.comments}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        </div>
+              {/* All Requests Modal */}
+              {showAllRequestsModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                  <div className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white mb-1">
+                          All Exception Requests
+                        </h3>
+                        <p className="text-gray-400">
+                          Complete history of student exception requests
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowAllRequestsModal(false)}
+                        className="bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 text-white p-2 rounded-lg transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
 
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                      {allRequests.length === 0 ? (
+                        <div className="text-center py-12">
+                          <MessageSquare className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                          <p className="text-gray-400 text-lg">
+                            No exception requests found
+                          </p>
+                        </div>
+                      ) : (
+                        allRequests.map((request) => (
+                          <div
+                            key={request._id || request.id}
+                            className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <div className="text-white font-medium">
+                                  {request.studentName ||
+                                    request.student}
+                                </div>
+                                <div className="text-gray-400 text-sm">
+                                  {request.studentId || request.rollNo}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-white text-sm">
+                                  {request.className || request.class}
+                                </div>
+                                <div className="text-gray-400 text-xs">
+                                  {request.createdAt
+                                    ? new Date(
+                                        request.createdAt
+                                      ).toLocaleString()
+                                    : request.timestamp}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 mb-4">
+                              <div className="text-sm text-gray-300">
+                                <strong>Reason:</strong>{" "}
+                                {request.reason}
+                              </div>
+                              {request.currentLocation && (
+                                <div className="text-sm text-gray-300">
+                                  <strong>Current Location:</strong>{" "}
+                                  {request.currentLocation}
+                                </div>
+                              )}
+                              {request.details && (
+                                <div className="text-sm text-gray-300">
+                                  <strong>Details:</strong>{" "}
+                                  {request.details}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                  request.status === "approved"
+                                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                    : request.status === "rejected"
+                                    ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                    : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                }`}
+                              >
+                                {request.status?.toUpperCase() ||
+                                  "PENDING"}
+                              </div>
+                              <div className="text-right">
+                                {request.reviewedBy && (
+                                  <div className="text-xs text-gray-400 mb-1">
+                                    Reviewed by: {request.reviewedBy}
+                                  </div>
+                                )}
+                                {request.reviewedAt && (
+                                  <div className="text-xs text-gray-400">
+                                    {new Date(
+                                      request.reviewedAt
+                                    ).toLocaleString()}
+                                  </div>
+                                )}
+                                {request.comments && (
+                                  <div className="text-xs text-gray-300 mt-1 italic">
+                                    "{request.comments}"
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="mt-6 flex justify-center">
+                      <button
+                        onClick={() => setShowAllRequestsModal(false)}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-medium transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+        </div>
         {/* Sidebar */}
         <div className="space-y-8">
           {/* Today's Schedule */}
@@ -569,7 +808,9 @@ const TeacherDashboard = () => {
                     className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-white font-medium">{cls.subject}</div>
+                      <div className="text-white font-medium">
+                        {cls.subject}
+                      </div>
                       <div className="text-sm text-gray-400">{cls.time}</div>
                     </div>
                     <div className="text-sm text-gray-400 mb-2">
@@ -582,7 +823,9 @@ const TeacherDashboard = () => {
                       </div>
                       <div className="flex items-center space-x-1">
                         <Users className="w-3 h-3 text-blue-400" />
-                        <span className="text-xs text-blue-400">{cls.students}</span>
+                        <span className="text-xs text-blue-400">
+                          {cls.students}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -616,7 +859,9 @@ const TeacherDashboard = () => {
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
                     <div className="font-medium">Upload Schedule</div>
-                    <div className="text-sm text-gray-400">Weekly timetable</div>
+                    <div className="text-sm text-gray-400">
+                      Weekly timetable
+                    </div>
                   </div>
                 </div>
               </button>
@@ -626,7 +871,9 @@ const TeacherDashboard = () => {
                   <Bell className="w-5 h-5 text-orange-400" />
                   <div>
                     <div className="font-medium">Send Notification</div>
-                    <div className="text-sm text-gray-400">To students/parents</div>
+                    <div className="text-sm text-gray-400">
+                      To students/parents
+                    </div>
                   </div>
                 </div>
               </button>
@@ -636,7 +883,9 @@ const TeacherDashboard = () => {
                   <BarChart3 className="w-5 h-5 text-blue-400" />
                   <div>
                     <div className="font-medium">View Analytics</div>
-                    <div className="text-sm text-gray-400">Detailed insights</div>
+                    <div className="text-sm text-gray-400">
+                      Detailed insights
+                    </div>
                   </div>
                 </div>
               </button>
@@ -654,7 +903,9 @@ const TeacherDashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-gray-300 text-sm">Face Recognition</span>
+                  <span className="text-gray-300 text-sm">
+                    Face Recognition
+                  </span>
                 </div>
                 <span className="text-green-400 text-sm">Active</span>
               </div>
@@ -698,7 +949,9 @@ const TeacherDashboard = () => {
               <h3 className="text-2xl font-bold text-white mb-2">
                 Attendance Passcode Generated
               </h3>
-              <p className="text-gray-400">Share this code with your students</p>
+              <p className="text-gray-400">
+                Share this code with your students
+              </p>
             </div>
 
             <div className="bg-black/40 rounded-xl p-6 mb-6 text-center border border-white/10">
@@ -741,14 +994,18 @@ const TeacherDashboard = () => {
   const renderAnalytics = () => (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">Analytics Dashboard</h2>
+        <h2 className="text-3xl font-bold text-white mb-2">
+          Analytics Dashboard
+        </h2>
         <p className="text-gray-400">Detailed insights and trends</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Attendance Trends */}
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Attendance Trends</h3>
+          <h3 className="text-xl font-bold text-white mb-4">
+            Attendance Trends
+          </h3>
           <div className="h-64 bg-gray-800/50 rounded-xl flex items-center justify-center border border-gray-700/50">
             <div className="text-center">
               <BarChart3 className="w-12 h-12 text-gray-500 mx-auto mb-2" />
@@ -759,7 +1016,9 @@ const TeacherDashboard = () => {
 
         {/* Subject Performance */}
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Subject Performance</h3>
+          <h3 className="text-xl font-bold text-white mb-4">
+            Subject Performance
+          </h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Data Structures</span>
@@ -805,13 +1064,22 @@ const TeacherDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           {Object.entries(weeklySchedule).map(([day, classes]) => (
             <div key={day} className="space-y-3">
-              <h3 className="text-lg font-bold text-white text-center">{day}</h3>
+              <h3 className="text-lg font-bold text-white text-center">
+                {day}
+              </h3>
               {classes.map((cls, index) => (
-                <div key={index} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
-                  <div className="text-sm font-medium text-white">{cls.subject}</div>
+                <div
+                  key={index}
+                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50"
+                >
+                  <div className="text-sm font-medium text-white">
+                    {cls.subject}
+                  </div>
                   <div className="text-xs text-gray-400">{cls.time}</div>
                   <div className="text-xs text-accent">{cls.room}</div>
-                  <div className="text-xs text-blue-400">{cls.students} students</div>
+                  <div className="text-xs text-blue-400">
+                    {cls.students} students
+                  </div>
                 </div>
               ))}
             </div>
@@ -858,12 +1126,22 @@ const TeacherDashboard = () => {
                   Teacher Dashboard
                 </h1>
                 <p className="text-gray-300 text-lg font-medium mt-1">
-                  Welcome back, <span className="text-accent font-bold">{teacher.name.split(" ")[1]}</span>!
+                  Welcome back,{" "}
+                  <span className="text-accent font-bold">
+                    {teacher.name.split(" ")[1]}
+                  </span>
+                  !
                 </p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">{teacher.id}</span>
-                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">{teacher.department}</span>
-                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">{teacher.designation}</span>
+                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">
+                    {teacher.id}
+                  </span>
+                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">
+                    {teacher.department}
+                  </span>
+                  <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded-lg border border-white/10">
+                    {teacher.designation}
+                  </span>
                 </div>
               </div>
             </div>
@@ -913,9 +1191,15 @@ const TeacherDashboard = () => {
 
       <style jsx>{`
         @keyframes gradientMove {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
         }
         .animate-gradientMove {
           background-size: 200% 200%;
@@ -931,5 +1215,5 @@ const TeacherDashboard = () => {
       </div>
     </div>
   );
-}
+};
 export default TeacherDashboard;

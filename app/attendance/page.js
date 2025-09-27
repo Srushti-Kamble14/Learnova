@@ -1,16 +1,19 @@
 "use client";
 
-import { Navbar } from "@/components/Navbar";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import AttendanceValidation from "@/components/AttendanceValidation";
 import FaceRecognizer from "@/components/FaceRecognizer";
+import { Navbar } from "@/components/Navbar";
 import useLabels from "@/components/useLabels";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const AttendancePage = () => {
-  const { labels, loading, error } = useLabels();
+  const { labels, loading: labelsLoading, error: labelsError } = useLabels();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [currentStep, setCurrentStep] = useState("validation"); // 'validation' or 'recognition'
+  const [validationComplete, setValidationComplete] = useState(false);
 
   // Redirect unauthenticated or unverified users
   useEffect(() => {
@@ -23,14 +26,28 @@ const AttendancePage = () => {
     }
   }, [authLoading, user, router]);
 
+  // Handle validation success
+  const handleValidationSuccess = () => {
+    setValidationComplete(true);
+    setCurrentStep("recognition");
+  };
+
+  // Handle back to validation
+  const handleBackToValidation = () => {
+    setCurrentStep("validation");
+    setValidationComplete(false);
+  };
+
   // While checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <span className="w-5 h-5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin mr-3"></span>
-        <span className="text-indigo-300 text-xl">
-          Checking authentication...
-        </span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto"></div>
+          <span className="text-purple-300 text-xl font-medium">
+            Checking authentication...
+          </span>
+        </div>
       </div>
     );
   }
@@ -38,41 +55,146 @@ const AttendancePage = () => {
   if (!user) return null; // wait for redirect
 
   // Loading labels
-  if (loading) {
+  if (labelsLoading) {
     return (
-      <div className="min-h-screen pt-10 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Navbar />
-        <div className="flex items-center justify-center pt-20 space-x-3">
-          <span className="w-5 h-5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin"></span>
-          <span className="text-indigo-300 text-xl">Loading labels...</span>
+        <div className="flex items-center justify-center pt-32 space-x-4">
+          <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+          <span className="text-purple-300 text-xl font-medium">
+            Loading student database...
+          </span>
         </div>
       </div>
     );
   }
 
   // Error loading labels
-  if (error) {
+  if (labelsError) {
     return (
-      <div className="min-h-screen pt-10 bg-gradient-to-br from-slate-400 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Navbar />
-        <div className="flex flex-col items-center justify-center mt-10">
-          <span className="text-red-500 text-xl">Error loading labels!</span>
+        <div className="flex flex-col items-center justify-center mt-32 space-y-6">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-red-400">
+            Database Connection Error
+          </h2>
+          <p className="text-gray-400 text-center max-w-md">
+            Unable to load student database. Please check your connection and
+            try again.
+          </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="px-6 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-2xl hover:bg-red-600/30 transition-all duration-300 backdrop-blur-sm"
           >
-            Retry
+            <span className="flex items-center gap-2">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Retry Connection
+            </span>
           </button>
         </div>
       </div>
     );
   }
 
-  // ✅ Authenticated, verified, and labels ready
+  // Check if no students are registered
+  if (!labels || labels.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center mt-32 space-y-6">
+          <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-yellow-400">
+            No Students Registered
+          </h2>
+          <p className="text-gray-400 text-center max-w-md">
+            No students have been registered in the system yet. Register some
+            students first to use the attendance system.
+          </p>
+          <button
+            onClick={() => router.push("/register")}
+            className="px-6 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-2xl hover:bg-purple-600/30 transition-all duration-300 backdrop-blur-sm"
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Register Students
+            </span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main content - show either validation or recognition based on current step
   return (
-    <div className="min-h-screen pt-10 bg-gradient-to-br from-slate-400 to-slate-900">
-      <Navbar />
-      <FaceRecognizer labels={labels} />
+    <div className="min-h-screen">
+      {currentStep === "validation" ? (
+        <>
+        <Navbar/>
+        <AttendanceValidation onValidationSuccess={handleValidationSuccess} />
+        </>
+      ) : (
+        <>
+          <div className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
+            <Navbar />
+          </div>
+          <div className="pt-16">
+            <FaceRecognizer labels={labels} onBack={handleBackToValidation} />
+          </div>
+        </>
+      )}
     </div>
   );
 };
