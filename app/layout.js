@@ -7,6 +7,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LearnovaChatbot from "@/components/ChatBot";
 import ClientLayout from "@/components/ClientLayout";
+import PageTransition from "@/components/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -231,12 +232,12 @@ export default function RootLayout({ children }) {
       >
         <AuthProvider>
           <Suspense fallback={null}>
-            {children}
+            <PageTransition>{children}</PageTransition>
             {/* Chatbot injected globally */}
             <div className="z-50">
               <LearnovaChatbot />
             </div>
-            <ClientLayout/>
+            <ClientLayout />
             <Toaster
               position="top-right" // default; see below for options
               toastOptions={{

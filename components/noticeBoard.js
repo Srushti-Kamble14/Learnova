@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Bell,
+  BellOff,
   Pin,
   Calendar,
   User,
@@ -467,16 +468,28 @@ const SmartNoticeBoard = () => {
 
             {/* Notices List */}
             <div className="space-y-4">
-              {filteredNotices.length === 0 ? (
+              {notices.length === 0 ? (
+                <div className="text-center py-20 animate-fadeIn">
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl border border-gray-700">
+                    <BellOff className="w-10 h-10 text-gray-500 animate-pulse" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    No notices yet
+                  </h3>
+                  <p className="text-gray-400 max-w-xs mx-auto">
+                    Check back later for updates and announcements from your institution.
+                  </p>
+                </div>
+              ) : filteredNotices.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Bell className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">
-                    No notices found
+                    No matching notices
                   </h3>
                   <p className="text-gray-500">
-                    Try adjusting your search or filters
+                    Try adjusting your search or filters to find what you're looking for.
                   </p>
                 </div>
               ) : (

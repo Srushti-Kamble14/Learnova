@@ -32,12 +32,16 @@ export function Navbar() {
   const dropdownRef = useRef(null);
   const pathname = usePathname();
 
-  // Handle scroll effect
+  // Handle scroll effect for transparency
+  const [scrollProgress, setScrollProgress] = useState(0);
+
   useEffect(() => {
     const handleScroll = () => {
+      const progress = Math.min(window.scrollY / 100, 1);
+      setScrollProgress(progress);
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -159,15 +163,20 @@ export function Navbar() {
 
   return (
     <>
-      {/* Premium gradient background overlay */}
-      <div className="fixed w-full top-0 z-51 h-20 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-none" />
+      {/* Premium gradient background overlay - Fades out as we scroll down to let glassmorphism shine */}
+      <div className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300" 
+           style={{ opacity: 1 - scrollProgress * 0.5 }} />
 
       <nav
-        className={`fixed w-full top-0 z-52 transition-all duration-100 ease-in-out ${
-          scrolled
-            ? "backdrop-blur-3xl border-b border-white/20 bg-black/40 shadow-2xl shadow-black/50"
-            : "backdrop-blur-2xl border-b border-white/10 bg-black/20"
-        }`}
+        className={`fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out`}
+        style={{
+          backgroundColor: `rgba(0, 0, 0, ${scrollProgress * 0.4})`,
+          backdropFilter: `blur(${scrollProgress * 24}px)`,
+          WebkitBackdropFilter: `blur(${scrollProgress * 24}px)`,
+          borderBottom: `1px solid rgba(255, 255, 255, ${scrollProgress * 0.1})`,
+          paddingTop: `${0.5 - scrollProgress * 0.5}rem`,
+          paddingBottom: `${0.5 - scrollProgress * 0.5}rem`,
+        }}
       >
         {/* Premium shimmer effect - FIXED: Using CSS classes instead of inline styles */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 animate-shimmer opacity-0 hover:opacity-100 transition-opacity duration-1000" />
@@ -196,8 +205,8 @@ export function Navbar() {
               </div>
             </Link>
 
-            {/* Enhanced Desktop Navigation - FIXED: Removed inline animation styles */}
-            <div className="hidden lg:flex items-center space-x-1">
+            {/* Enhanced Desktop Navigation - FIXED: Changed breakpoint to sm:flex */}
+            <div className="hidden sm:flex items-center space-x-1">
              {navigationItems.map((item, index) => {
                 const isActive = pathname === item.href;
                 return (
@@ -226,8 +235,8 @@ export function Navbar() {
                })}
               {/* Enhanced Auth Section */}
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4 ml-6">
-                  <Link href="/attendance">
+                <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
+                  <Link href="/attendance" className="hidden md:block">
                     <Button className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -236,7 +245,7 @@ export function Navbar() {
                       </span>
                     </Button>
                   </Link>
-                  <Link href="/notices">
+                  <Link href="/notices" className="hidden lg:block">
                     <Button className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -277,7 +286,7 @@ export function Navbar() {
                         </div>
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-black animate-pulse" />
                       </div>
-                      <div className="hidden lg:block">
+                      <div className="hidden md:block">
                         <p className="text-sm font-medium">
                           {getUserDisplayName()}
                         </p>
@@ -369,7 +378,7 @@ export function Navbar() {
                   </div>
                 </div>
               ) : (
-                <div className="ml-6">
+                <div className="ml-2 md:ml-6">
                   <Link href="/auth">
                     <Button className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -383,8 +392,8 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Enhanced Mobile menu button with User Logo */}
-            <div className="lg:hidden flex items-center space-x-3">
+            {/* Enhanced Mobile menu button with User Logo - FIXED: Changed breakpoint to sm:hidden */}
+            <div className="sm:hidden flex items-center space-x-3">
               {isAuthenticated && (
                 <div className="relative">
                   <div className="w-9 h-9 relative">

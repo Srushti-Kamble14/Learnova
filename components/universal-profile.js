@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { analytics, db } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import Image from "next/image";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit  } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
   User,
@@ -49,22 +49,24 @@ export default function UniversalProfile() {
 
   // Role state fetched from Firestore
   const [role, setRole] = useState("student");
+  const [userData,setUserData] = useState(null);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
+    const fetchUserData = async () => {
       if (!user?.uid) return;
       try {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
-          setRole(data.role || "student");
+          setUserData(data); //to save the full profile data
+          setRole(data.role || "student"); 
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
       }
     };
-    fetchUserRole();
+    fetchUserData();
   }, [user]);
 
   const [formData, setFormData] = useState({
@@ -112,6 +114,18 @@ export default function UniversalProfile() {
     if (user?.email) return user.email.split("@")[0];
     return "User";
   };
+
+  const getMemberSince = () => {
+    if (!userData?.createdAt) return "Just joined";
+   
+    //converting firestore timstamp to JS Dates
+    const date = userData.createdAt?.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt);
+
+    return new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  }
 
   const getRoleConfig = () => {
     const configs = {
@@ -637,7 +651,7 @@ export default function UniversalProfile() {
                   {
                     icon: Calendar,
                     label: "Member Since",
-                    value: "January 2024",
+                    value: getMemberSince(), //calling the function to fetch the date
                     readonly: true,
                   },
                 ].map((item) => (
@@ -673,29 +687,36 @@ export default function UniversalProfile() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-          {roleConfig.stats.map((stat, index) => (
-            <div
-              key={stat.label}
-              className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 md:p-6 hover:bg-black/30 transition-all duration-300 group relative overflow-hidden"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <stat.icon className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors duration-300" />
-                  <div className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">
-                    {stat.change}
+          {roleConfig.stats.map((stat, index) => {
+            // Retrieve dynamic stat value from database if available, else default to "0"
+            const realValue = stats && stats[stat.label] !== undefined ? stats[stat.label] : "0";
+            // Retrieve dynamic change indicator if available, else show default fallback
+            const realChange = stats && stats[`${stat.label}_change`] !== undefined ? stats[`${stat.label}_change`] : "New";
+
+            return (
+              <div
+                key={stat.label}
+                className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 md:p-6 hover:bg-black/30 transition-all duration-300 group relative overflow-hidden"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <stat.icon className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors duration-300" />
+                    <div className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">
+                      {realChange}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-white mb-1">
+                      {realValue}
+                    </h3>
+                    <p className="text-white/60 text-sm">{stat.label}</p>
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-white mb-1">
-                    {stat.value}
-                  </h3>
-                  <p className="text-white/60 text-sm">{stat.label}</p>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Tabs */}
@@ -764,47 +785,59 @@ export default function UniversalProfile() {
                     Recent Activity
                   </h3>
                   <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              activity.type === "course"
-                                ? "bg-blue-400"
-                                : activity.type === "achievement"
-                                ? "bg-yellow-400"
-                                : "bg-green-400"
-                            }`}
-                          />
-                          <div>
-                            <p className="text-white font-medium">
-                              {activity.title}
-                            </p>
-                            <p className="text-white/60 text-sm">
-                              {activity.time}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-16 bg-white/10 rounded-full h-2">
+                    {activity && activity.length > 0 ? (
+                      activity.map((item, index) => (
+                        <div
+                          key={item.id || index}
+                          className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300"
+                        >
+                          <div className="flex items-center space-x-4">
+                            {/* Color-code indicator based on activity type */}
                             <div
-                              className={`h-full rounded-full ${
-                                activity.progress === 100
-                                  ? "bg-green-400"
-                                  : "bg-blue-400"
+                              className={`w-2 h-2 rounded-full ${
+                                item.type === "course"
+                                  ? "bg-blue-400"
+                                  : item.type === "achievement"
+                                  ? "bg-yellow-400"
+                                  : "bg-green-400"
                               }`}
-                              style={{ width: `${activity.progress}%` }}
                             />
+                            <div>
+                              <p className="text-white font-medium">
+                                {item.title || "Activity logged"}
+                              </p>
+                              <p className="text-white/60 text-sm">
+                                {item.time || "Recently"}
+                              </p>
+                            </div>
                           </div>
-                          <span className="text-white/60 text-sm w-12">
-                            {activity.progress}%
-                          </span>
+                          
+                          {/* Render progress bar only if progress property is available */}
+                          {item.progress !== undefined && (
+                            <div className="flex items-center space-x-3">
+                              <div className="w-16 bg-white/10 rounded-full h-2">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    item.progress === 100
+                                      ? "bg-green-400"
+                                      : "bg-blue-400"
+                                  }`}
+                                  style={{ width: `${item.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-white/60 text-sm w-12">
+                                {item.progress}%
+                              </span>
+                            </div>
+                          )}
                         </div>
+                      ))
+                    ) : (
+                      // Display fallback state when user has no recent activity
+                      <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
+                        <p className="text-white/60">No recent activity yet. Start exploring courses!</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
