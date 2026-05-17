@@ -19,7 +19,6 @@ export const logActivity = async (userId, activityData) => {
             progress: activityData.progress || 0,
             timestamp: serverTimestamp(), // Record when the activity happened
         });
-        console.log("Activity logged successfully!");
     } catch (error) {
         console.error("Error logging activity to Firestore:", error);
     }
