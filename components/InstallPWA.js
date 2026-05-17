@@ -19,17 +19,6 @@ export default function InstallPWA() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
-        .then((registration) => {
-          console.log(
-            "Service Worker registered successfully:",
-            registration.scope
-          );
-
-          // Check for updates
-          registration.addEventListener("updatefound", () => {
-            console.log("Service Worker update found!");
-          });
-        })
         .catch((error) => {
           console.error("Service Worker registration failed:", error);
         });
@@ -62,7 +51,6 @@ export default function InstallPWA() {
 
     // Listen for successful installation
     window.addEventListener("appinstalled", () => {
-      console.log("PWA was installed successfully");
       setIsInstalled(true);
       setIsVisible(false);
     });

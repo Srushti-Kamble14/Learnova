@@ -240,7 +240,6 @@ export default function UniversalSettings() {
   const saveSettings = async () => {
     setIsLoading(true);
     try {
-      console.log("Saving settings:", settings);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setHasChanges(false);
     } catch (error) {
