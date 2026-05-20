@@ -10,6 +10,7 @@ import ClientLayout from "@/components/ClientLayout";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import ScrollToTop from "@/components/ScrollToTop";
+import BackToTop from "@/components/BackToTop";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -240,6 +241,7 @@ export default function RootLayout({ children }) {
             </div>
             <Footer />
             <ClientLayout />
+            <BackToTop />
             <Toaster
               position="top-right" // default; see below for options
               toastOptions={{

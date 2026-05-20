@@ -24,7 +24,7 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState("");
 
@@ -106,21 +106,22 @@ export default function AuthPage() {
         result = await loginWithEmail(email, password, selectedRole);
       } else {
         result = await signupWithEmail(email, password, selectedRole, {
-          fullName,
-          instituteName,
+            fullName,
+            instituteName,
         });
       }
 
-      if (result.success) {
-        if (result.needsVerification) {
-          router.push("/verify");
-        } else if (result.needsProfile) {
-          router.push("/profile");
-        } else {
-          redirectBasedOnRole(result.userData.role, router);
-        }
+      if (result.needsVerification) {
+        setShowRoleSelection(true);
+        router.push("/verify");
+      } else if (result.needsProfile) {
+        setShowRoleSelection(true);
+        router.push("/profile");
+      } else if (result.success) {
+        setShowRoleSelection(true);
+        redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error });
+        setErrors({ submit: result.error || "Something went wrong. Please try again." });
       }
     } catch (err) {
       console.error("Auth error:", err);
