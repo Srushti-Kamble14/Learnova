@@ -356,7 +356,26 @@ export function Navbar() {
               })}
 
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4 ml-6">
+                <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
+                  <Button asChild className="hidden md:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                    <Link href="/attendance">
+                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <span className="relative flex items-center">
+                        Mark Attendance
+                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
+                      </span>
+                    </Link>
+                  </Button>
+                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                    <Link href="/notices">
+                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <span className="relative flex items-center">
+                        Notice Board
+                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
+                      </span>
+                    </Link>
+                  </Button>
+
 
                   {/* Notifications */}
                   <div className="relative">
@@ -514,12 +533,16 @@ export function Navbar() {
                   </div>
                 </div>
               ) : (
-                <div className="ml-6">
-                  <Link href="/auth">
-                    <Button className="bg-gradient-to-r from-accent to-blue-500 text-white">
-                      Login / Signup
-                    </Button>
-                  </Link>
+                <div className="ml-2 md:ml-6">
+                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                    <Link href="/auth">
+                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <span className="relative flex items-center">
+                        Login / Signup
+                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
+                      </span>
+                    </Link>
+                  </Button>
                 </div>
               )}
             </div>
@@ -529,10 +552,10 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() =>
-                  setIsMenuOpen(!isMenuOpen)
-                }
-                className="text-white"
+                aria-label="Toggle Menu"
+                aria-expanded={isMenuOpen}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-white hover:text-accent hover:bg-white/10 transition-all duration-300 hover:scale-110 relative group"
               >
                 {isMenuOpen ? (
                   <X className="h-7 w-7" />
@@ -573,35 +596,136 @@ export function Navbar() {
               </Button>
             </div>
 
-            <div className="p-4 space-y-2">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() =>
-                    setIsMenuOpen(false)
-                  }
-                  className="flex items-center px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/5"
-                >
-                  <item.icon className="h-5 w-5 mr-4" />
-                  {item.label}
-                </Link>
-              ))}
+            {/* User Info Section */}
+            {isAuthenticated && (
+              <div className="p-6 border-b border-white/10 flex-shrink-0">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-14 h-14 relative">
+                    {getUserPhoto() && (
+                      <Image
+                        src={getUserPhoto()}
+                        alt="Profile"
+                        width={56}
+                        height={56}
+                        className="w-14 h-14 rounded-full border-2 border-accent/50 object-cover shadow-lg"
+                        onError={handleImageError}
+                      />
+                    )}
+                    <div
+                      className={`fallback-avatar absolute inset-0 w-14 h-14 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${getUserPhoto() ? "hidden" : "flex"
+                        } `}
+                    >
+                      <span className="text-lg font-bold text-white">
+                        {getUserInitials(getUserDisplayName())}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-semibold text-base truncate">
+                      {getUserDisplayName()}
+                    </h3>
+                    <p className="text-white/60 text-sm truncate">
+                      {user?.email || ""}
+                    </p>
+                    <div className="flex items-center mt-1">
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2" />
+                      <span className="text-xs text-yellow-400 font-medium">
+                        {getUserRole()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-              {isAuthenticated &&
-                userMenuItems.map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() =>
-                      setIsMenuOpen(false)
-                    }
-                    className="flex items-center px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/5"
-                  >
-                    <item.icon className="h-5 w-5 mr-4" />
-                    {item.label}
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button asChild className="w-full bg-gradient-to-r from-accent/90 to-blue-500/90 hover:from-accent hover:to-blue-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                    <Link href="/attendance" onClick={() => setIsMenuOpen(false)}>
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Attendance
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                    <Link href="/notices" onClick={() => setIsMenuOpen(false)}>
+                      <Bell className="h-4 w-4 mr-2" />
+                      Notices
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Menu - FIXED: Removed inline animation delay styles */}
+            <div className="flex-1 overflow-y-auto py-4">
+              <div className="px-4 space-y-2">
+                {/* Main Navigation */}
+                <div className="mb-6">
+                  <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
+                    Navigation
+                  </h4>
+                  {navigationItems.map((item, index) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={`flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group animate-fadeIn-delay-${index}`}
+                    >
+                      <item.icon className="h-5 w-5 mr-4 group-hover:text-accent transition-colors duration-200" />
+                      <span className="font-medium">{item.label}</span>
+                      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <ChevronDown className="h-4 w-4 -rotate-90 text-accent" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* User Menu */}
+                {isAuthenticated ? (
+                  <div className="mb-6">
+                    <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
+                      Account
+                    </h4>
+                    {userMenuItems.map((item) => (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group"
+                      >
+                        <item.icon className="h-5 w-5 mr-4 group-hover:text-accent transition-colors duration-200" />
+                        <span className="font-medium">{item.label}</span>
+                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <ChevronDown className="h-4 w-4 -rotate-90 text-accent" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Bottom Section */}
+            <div className="p-6 border-t border-white/10 space-y-4 flex-shrink-0">
+              {isAuthenticated ? (
+                <Button
+                  className="w-full bg-gradient-to-r from-red-500/80 to-red-600/80 hover:from-red-600 hover:to-red-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 group"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-3 group-hover:scale-110 transition-transform duration-200" />
+                  Sign Out
+                </Button>
+              ) : (
+                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 group">
+                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
+                    <Sparkles className="h-4 w-4 mr-3 group-hover:animate-spin transition-all duration-300" />
+                    Get Started
                   </Link>
-                ))}
+                </Button>
+              )}
+              <div className="text-center">
+                <p className="text-white/40 text-xs">
+                  © {new Date().getFullYear()} Learnova. All rights reserved.
+                </p>
+              </div>
             </div>
           </div>
         </>

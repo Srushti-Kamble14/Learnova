@@ -40,8 +40,8 @@ const PARTICLES_DATA = [
 ];
 
 const STATS_DATA = [
-  { number: "Upcoming", label: "Institution Partnerships", icon: BookOpen },
-  { number: "Upcoming", label: "Student Tracking", icon: Users },
+  { number: "10,000+", label: "Institution Partnerships", icon: BookOpen },
+  { number: "5M+", label: "Student Tracking", icon: Users },
   { number: "70%", label: "Time Saved", icon: TrendingUp },
   { number: "98%", label: "Accuracy Rate", icon: Award },
 ];
@@ -191,13 +191,19 @@ const ActionButton = ({
       "bg-white/10 text-white border border-white/20 hover:bg-white/20",
   };
 
-  const content = (
-    <button className={`${baseClasses} ${variants[variant]} ${className}`}>
+  const contentClasses = `${baseClasses} ${variants[variant]} ${className}`;
+  if (href) {
+    return (
+      <Link href={href} className={contentClasses}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button className={contentClasses}>
       {children}
     </button>
   );
-
-  return href ? <Link href={href}>{content}</Link> : content;
 };
 
 export default function AboutPage() {
@@ -353,7 +359,7 @@ export default function AboutPage() {
               />
             </div>
 
-            <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
+            <h1 className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto font-normal">
               The most advanced platform for{" "}
               <span className="text-accent font-semibold">
                 curriculum planning
@@ -363,7 +369,7 @@ export default function AboutPage() {
                 attendance management
               </span>
               , designed for smooth academic management.
-            </p>
+            </h1>
           </div>
         </section>
 
@@ -404,11 +410,9 @@ export default function AboutPage() {
                   </p>
                 </div>
 
-                  <ActionButton>
-                    <Link href="/activity" className="inline-flex items-center w-full h-full">
+                  <ActionButton href="/activity">
                       Learn More
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                    </Link>
                   </ActionButton>
               </Reveal>
 
