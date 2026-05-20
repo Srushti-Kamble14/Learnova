@@ -376,8 +376,6 @@ export function Navbar() {
                     </Link>
                   </Button>
 
-                  {/* Enhanced User Dropdown */}
-                  <div className="relative" ref={dropdownRef}>
 
                   {/* Notifications */}
                   <div className="relative">

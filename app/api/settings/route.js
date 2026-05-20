@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { connectDb } from "@/lib/mongodb";
 
 export async function PATCH(request) {
   try {
@@ -13,8 +13,7 @@ export async function PATCH(request) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db();
+    const db = await connectDb();
 
     await db.collection("settings").updateOne(
       { userId },
