@@ -1,6 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import xss from "xss";
 
