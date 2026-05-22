@@ -22,6 +22,7 @@ import {
   UserCheck,
   Sun,
   Moon,
+  Keyboard,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import Image from "next/image";
@@ -33,17 +34,10 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  const {
-  notifications,
-  removeNotification,
-  markAsRead,
-  markAllAsRead,
-  addNotification,
-  } = useNotifications();
+  
+const [notifications, setNotifications] = useState([]);
 
-  const unreadCount = notifications.filter(
-  (n) => !n.read
-  ).length;
+const [unreadCount, setUnreadCount] = useState(0);
 
   const { user, userProfile, signOut, isAuthenticated } =
     useAuthContext();
@@ -257,6 +251,7 @@ useEffect(() => {
   );
 
   const handleImageError = (e) => {
+
     const img = e.target;
 
     const fallback =
@@ -283,13 +278,13 @@ useEffect(() => {
         className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
         style={{
          backgroundColor:
-         theme === "dark"
-         ? `rgba(0,0,0,${0.7 + scrollProgressValue * 0.2})`
-          : `rgba(255,255,255,${0.95})`,
+         !mounted ? "rgba(255, 255, 255, 0.95)" : theme === "dark"
+         ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
+          : `rgba(255,255,255,${0.98})`,
          backdropFilter: `blur(20px)`,
          WebkitBackdropFilter: `blur(20px)`,
         borderBottom:
-       theme === "dark"
+        !mounted ? "1px solid rgba(0, 0, 0, 0.08)" : theme === "dark"
       ? `1px solid rgba(255,255,255,0.1)`
       : `1px solid rgba(0,0,0,0.08)`,
 }}
@@ -303,22 +298,22 @@ useEffect(() => {
               className="flex items-center space-x-3"
             >
               <div className="bg-gradient-to-br from-accent to-blue-500 p-2 rounded-xl">
-                <BookOpen className="h-6 w-6 text-foreground" />
+                <BookOpen className="h-6 w-6 text-white" />
               </div>
 
               <div>
-                <span className="text-xl font-bold text-foreground">
+                <span className="text-xl font-bold text-gray-950 dark:text-white">
                   Learnova
                 </span>
 
-                <p className="text-xs text-muted-foreground uppercase">
+                <p className="text-xs text-gray-600 dark:text-gray-300 uppercase">
                   Premium
                 </p>
               </div>
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden sm:flex items-center space-x-2">
         
               {navigationItems.map((item) => {
                 const isActive =
@@ -330,31 +325,31 @@ useEffect(() => {
                     href={item.href}
                     className={`px-4 py-2 rounded-lg transition-all duration-300 ${
                       isActive
-                        ? "bg-accent/20 text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                        ? "bg-accent/20 text-gray-950 dark:text-white"
+                        : "text-gray-700 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
                     }`}
                   >
                     {item.label}
                   </Link>
                 );
               })}
-
-              { isAuthenticated ? (
-                <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
-                 <button
-                  onClick={() =>
-                    addNotification({
-                      message: "Test notification works!",
-                      time: "Just now",
-                      read: false,
-                      type: "success",
-                    })
-                  }
-                  className="bg-blue-500 text-foreground px-3 py-1 rounded"
+              {/* Theme Toggle - visible to all users */}
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
                 >
-                  Test Notification
+                  {theme === "dark" ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
                 </button>
-                  <Button asChild className="hidden md:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-foreground font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+              )}
+              { isAuthenticated ? (
+                <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-6">
+                
+                  <Button asChild className="hidden sm:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                     <Link href="/attendance">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -363,7 +358,7 @@ useEffect(() => {
                       </span>
                     </Link>
                   </Button>
-                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-foreground font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                     <Link href="/notices">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -382,12 +377,12 @@ useEffect(() => {
                           !isNotificationOpen
                         )
                       }
-                      className="relative p-2 rounded-xl text-foreground hover:bg-accent/10"
+                      className="relative p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
                     >
                       <Bell className="h-5 w-5" />
 
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-foreground rounded-full h-4 w-4 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-white rounded-full h-4 w-4 flex items-center justify-center">
                           {unreadCount}
                         </span>
                       )}
@@ -412,48 +407,37 @@ useEffect(() => {
                             </button>
                           )}
                         </div>
+<div className="max-h-72 overflow-y-auto">
+  {notifications.length === 0 ? (
+    <div className="p-6 text-center">
+      <Bell className="h-10 w-10 mx-auto text-white/30 mb-3" />
+      <p className="text-white/50 text-sm">
+        No notifications available
+      </p>
+    </div>
+  ) : (
+    notifications.map((n) => (
+      <div
+        key={n.id}
+        onClick={() => markAsRead(n.id)}
+        className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 ${
+          !n.read ? "bg-accent/5" : ""
+        }`}
+      >
+        <p className="text-sm text-white">
+          {n.message}
+        </p>
 
-                        <div className="max-h-72 overflow-y-auto">
-                          {notifications.map((n) => (
-                            <button
-                              key={n.id}
-                              onClick={() =>
-                                markAsRead(n.id)
-                              }
-                              className={`p-4 border-b border-white/5 cursor-pointer hover:bg-accent/10 ${
-                                !n.read
-                                  ? "bg-accent/5"
-                                  : ""
-                              }`}
-                            >
-                              <p className="text-sm text-foreground">
-                                {n.message}
-                              </p>
-
-                              <p className="text-xs text-foreground/40 mt-1">
-                                {n.time}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
+        <p className="text-xs text-white/40 mt-1">
+          {n.time}
+        </p>
+      </div>
+    ))
+  )}
+</div>
                       </div>
                     )}
                   </div>
-                 {/* Theme Toggle */}
-                  {mounted && (
-                 <button
-                 onClick={() =>
-                 setTheme(theme === "dark" ? "light" : "dark")
-                 }
-                 className="p-2 rounded-xl text-foreground hover:bg-accent/10 transition-all duration-300"
-                  >
-                  {theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-                  ) : (
-                  <Moon className="h-5 w-5" />
-                 )}
-                 </button>
-                 )}
 
                   {/* User Dropdown */}
                   <div
@@ -466,7 +450,7 @@ useEffect(() => {
                           !isDropdownOpen
                         )
                       }
-                      className="flex items-center space-x-3 p-2 rounded-xl text-foreground hover:bg-accent/10"
+                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
                     >
                       <div className="relative w-10 h-10">
 
@@ -483,7 +467,7 @@ useEffect(() => {
                           />
                         ) : (
                           <div className="fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center">
-                            <span className="text-sm font-bold text-foreground">
+                            <span className="text-sm font-bold text-white">
                               {getUserInitials(
                                 getUserDisplayName()
                               )}
@@ -492,12 +476,12 @@ useEffect(() => {
                         )}
                       </div>
 
-                      <div className="hidden md:block text-left">
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="hidden sm:block text-left">
+                        <p className="text-sm font-medium">
                           {getUserDisplayName()}
                         </p>
 
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-gray-600 dark:text-gray-300">
                           {getUserRole()}
                         </p>
                       </div>
@@ -546,8 +530,8 @@ useEffect(() => {
                   </div>
                 </div>
               ) : (
-                <div className="ml-2 md:ml-6">
-                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-foreground font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                <div className="ml-2 sm:ml-6">
+                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                     <Link href="/auth">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -561,14 +545,14 @@ useEffect(() => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden">
+            <div className="sm:hidden">
               <Button
                 variant="ghost"
                 size="sm"
                 aria-label="Toggle Menu"
                 aria-expanded={isMenuOpen}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-foreground hover:text-accent hover:bg-white/10 transition-all duration-300 hover:scale-110 relative group"
+                className="text-gray-800 dark:text-gray-100 hover:text-accent hover:bg-accent/10 transition-all duration-300 hover:scale-110 relative group"
               >
                 {isMenuOpen ? (
                   <X className="h-7 w-7" />
@@ -729,14 +713,24 @@ useEffect(() => {
                 </Button>
               ) : (
                 <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 z font-medium shadow-lg hover:shadow-xl transition-all duration-300 group">
-                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
                     <Sparkles className="h-4 w-4 mr-3 group-hover:animate-spin transition-all duration-300" />
                     Get Started
                   </Link>
                 </Button>
               )}
-              <div className="text-center">
-                <p className="text-foreground/40 text-xs">
+              <div className="text-center space-y-3">
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
+                  }}
+                  className="inline-flex items-center gap-1.5 text-foreground/60 hover:text-accent transition-colors text-xs font-medium cursor-pointer"
+                >
+                  <Keyboard className="h-4 w-4 text-accent" />
+                  <span>Keyboard Shortcuts</span>
+                </button>
+                <p className="text-foreground/40 text-[10px]">
                   © {new Date().getFullYear()} Learnova. All rights reserved.
                 </p>
               </div>
@@ -744,6 +738,7 @@ useEffect(() => {
           </div>
         </>
       )}
+
     </>
   );
 }

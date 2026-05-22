@@ -24,7 +24,7 @@ import {
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
-import Navbar from "./Navbar";
+import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
 import AttendanceChart from "./AttendanceChart";
@@ -35,7 +35,7 @@ import {
 } from "@/constants/mockData";
 
 const AttendanceHeatmap = dynamic(
-  () => import("./AttendanceHeatmap"),
+  () => import("./AttendanceHeatmap.jsx"),
   {
     ssr: false,
     loading: () => <ChartSkeleton variant="heatmap" />,
@@ -371,7 +371,10 @@ const StudentDashboard = () => {
                   Attendance Overview
                 </h2>
 
-                <button className="text-accent hover:text-accent/80 transition-colors">
+                <button
+                  className="text-accent hover:text-accent/80 transition-colors"
+                  aria-label="Refresh attendance overview"
+                >
                   <RefreshCw className="w-5 h-5" />
                 </button>
               </div>
@@ -435,7 +438,10 @@ const StudentDashboard = () => {
                   Recent Activity
                 </h2>
 
-                <button className="text-accent hover:text-accent/80 transition-colors">
+                <button
+                  className="text-accent hover:text-accent/80 transition-colors"
+                  aria-label="Download recent activity"
+                >
                   <Download className="w-5 h-5" />
                 </button>
               </div>
@@ -487,7 +493,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Heatmap */}
-            <AttendanceHeatmap />
+            <AttendanceHeatmap recentActivity={recentActivity} />
           </div>
 
           {/* Right */}
@@ -649,7 +655,7 @@ const StudentDashboard = () => {
         }
       `}</style>
     </div>
-  );
+  );  
 };
 
 const StatCard = ({ color, label, value }) => {
@@ -686,7 +692,12 @@ const StatCard = ({ color, label, value }) => {
         </div>
       )}
 
-      {user && user.uid && <AttendanceAnalytics userId={user.uid} />}
+      {user && user.uid && (
+        <AttendanceAnalytics
+          userId={user.uid}
+          recentActivity={recentActivity}
+        />
+      )}
       {/* KEEP YOUR ENTIRE EXISTING JSX HERE EXACTLY SAME */}
     </div>
   );
