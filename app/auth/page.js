@@ -24,7 +24,7 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [showRoleSelection, setShowRoleSelection] = useState(true);
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState("");
 
