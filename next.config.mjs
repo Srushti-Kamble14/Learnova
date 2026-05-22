@@ -67,18 +67,6 @@ const withPWA = withPWAInit({
           },
         },
       },
-      {
-        urlPattern: /\/api\/.*$/i,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "apis",
-          expiration: {
-            maxEntries: 16,
-            maxAgeSeconds: 24 * 60 * 60,
-          },
-          networkTimeoutSeconds: 10,
-        },
-      },
     ],
   },
 });
@@ -104,7 +92,28 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(self), microphone=(), geolocation=(self)",
+          },
+        ],
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+          {
+            key: "Surrogate-Control",
+            value: "no-store",
           },
         ],
       },
