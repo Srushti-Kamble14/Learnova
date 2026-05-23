@@ -8,6 +8,8 @@ import {
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 
+export const dynamic = "force-dynamic";
+
 export const rateLimitMap = new Map();
 
 const RATE_LIMIT_WINDOW =

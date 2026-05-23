@@ -1,8 +1,13 @@
+// app/api/exceptions/list/route.js
+
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
+
+// Forces Next.js to treat this as a runtime API instead of trying to statically compile it during npm run build
+export const dynamic = "force-dynamic";
 
 const ALLOWED_SORT_FIELDS = new Set([
   "createdAt",
@@ -43,7 +48,6 @@ export const GET = withErrorHandler(async (request) => {
       throw new ValidationError("Page and limit must be greater than 0");
     }
 
-    // FIX: Removed duplicate `const skip` declaration — only declared once here
     const skip = (page - 1) * limit;
 
     const db = await connectDb();
@@ -90,7 +94,6 @@ export const GET = withErrorHandler(async (request) => {
 
     const totalPages = Math.ceil(total / limit);
 
-    // FIX: Moved 200 outside the object — it's the second argument to jsonSuccess, not a property
     return jsonSuccess(
       {
         exceptions,

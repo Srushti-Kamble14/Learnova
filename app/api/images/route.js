@@ -34,7 +34,6 @@ export const GET = withErrorHandler(async (request) => {
     }
 
     const imageResponse = await fetch(user.image);
-
     if (!imageResponse.ok) {
       throw new AppError("Failed to fetch image", 502);
     }
@@ -46,7 +45,6 @@ export const GET = withErrorHandler(async (request) => {
       headers: {
         "Content-Type": imageResponse.headers.get("content-type") || "image/jpeg",
         "Cache-Control": "no-store, no-cache, must-revalidate",
-        "Content-Security-Policy": "default-src 'none'; img-src 'self'",
         "X-Content-Type-Options": "nosniff",
       },
     });

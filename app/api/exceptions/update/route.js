@@ -4,20 +4,10 @@ import { getUserProfileByEmail } from "@/lib/firebase-admin";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { ObjectId } from "mongodb";
 
-let ObjectId;
-if (process.env.NODE_ENV === "test") {
-  ObjectId = class FakeObjectId {
-    constructor(id) {
-      this.id = id;
-    }
-    static isValid(id) {
-      return typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
-    }
-  };
-} else {
-  ObjectId = require("mongodb").ObjectId;
-}
+// Required to prevent build-time static generation errors
+export const dynamic = "force-dynamic";
 
 export const PUT = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
@@ -25,17 +15,12 @@ export const PUT = withErrorHandler(async (request) => {
   const body = await request.json();
   const { exceptionId, status, comments } = body;
 
-  if (!exceptionId) {
-    throw new ValidationError("exceptionId is required");
-  }
-
-  if (!ObjectId.isValid(exceptionId)) {
-    throw new ValidationError("Invalid exception ID");
+  if (!exceptionId || !ObjectId.isValid(exceptionId)) {
+    throw new ValidationError("Invalid or missing exception ID");
   }
 
   const trimmedStatus = typeof status === "string" ? status.trim() : "";
-  const allowedStatuses = ["approved", "rejected"];
-  if (!allowedStatuses.includes(trimmedStatus)) {
+  if (!["approved", "rejected"].includes(trimmedStatus)) {
     throw new ValidationError("Invalid status value");
   }
 
@@ -89,17 +74,10 @@ export const PUT = withErrorHandler(async (request) => {
           updatedAt: new Date(),
         },
       },
-    );
-  } catch (error) {
-    console.error("Exception update error:", error);
-    throw new AppError("Internal server error", 500);
-  }
+    }
+  );
 
-  if (result.matchedCount === 0) {
-    throw new NotFoundError("Exception not found");
-  }
+  if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
 
-  return NextResponse.json({
-    message: "Exception updated successfully",
-  });
+  return NextResponse.json({ message: "Exception updated successfully" });
 });

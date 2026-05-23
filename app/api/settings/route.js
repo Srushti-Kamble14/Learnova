@@ -6,6 +6,9 @@ import { z } from "zod";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError, ForbiddenError } from "@/lib/errors";
+import logger from "@/utils/logger"; // Import the central Winston logger
+
+export const dynamic = "force-dynamic";
 
 const settingsSchema = z
   .object({
@@ -142,9 +145,13 @@ export const PATCH = withErrorHandler(async (request) => {
     { upsert: true }
   );
 
-  console.log(
-    `[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${isOperatorAdmin ? "admin" : "owner"})`
-  );
+  // FIX: Replaced unstructured console.log with a professional Winston audit block
+  logger.info({
+    message: "User settings profiles modified successfully",
+    targetUserId,
+    operatorId: decodedToken.uid,
+    operatorRole: isOperatorAdmin ? "admin" : "owner"
+  });
 
   return NextResponse.json({ message: "Settings saved successfully" });
 });
