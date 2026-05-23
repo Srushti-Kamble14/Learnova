@@ -118,15 +118,15 @@ learnova/
 │   ├── FaceRecognizer.js         # Face recognition component
 │   ├── AttendanceValidation.js   # Attendance validation logic
 │   ├── StudentDashboard.js       # Student dashboard component
-│   ├── TeacherDashboardComponent.js
-│   ├── InstituteDashboard.js
-│   ├── AdminDashboard.js
+│   ├── TeacherDashboardComponent.js # Teacher dashboard component
+│   ├── InstituteDashboard.js     # Institute dashboard
+│   ├── AdminDashboard.js         # Admin dashboard
 │   ├── ChatBot.js                # AI chatbot
 │   ├── noticeBoard.js            # Notice board component
 │   ├── Navbar.js                 # Navigation
 │   ├── ProtectedRoute.js         # Route protection
 │   ├── InstallPWA.js             # PWA install prompt
-│   └── profile.js / settings.js # Profile & settings
+│   └── profile.js / settings.js  # Profile & settings
 │
 ├── constants/
 │   └── userRoles.js              # Role definitions and config
@@ -158,10 +158,11 @@ learnova/
 - A MongoDB instance (local or Atlas)
 - A Vercel Blob store (for file uploads)
 
+
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Premshaw23/Learnova.git
+git clone [https://github.com/Premshaw23/Learnova.git](https://github.com/Premshaw23/Learnova.git)
 cd Learnova
 ```
 
