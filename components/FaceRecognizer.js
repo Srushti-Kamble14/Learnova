@@ -446,7 +446,7 @@ export default function FaceRecognizer({ authUser }) {
 
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+          className="absolute top-0 left-0 w-full h-full pointer-events-none z-20 object-cover"
         />
 
         {/* Liveness Overlay */}
