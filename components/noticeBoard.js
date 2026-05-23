@@ -3,15 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import {
-  BellOff,
-  Pin,
-  User,
-  Clock,
-  AlertCircle,
-  Eye,
-  EyeOff,
-} from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
@@ -29,24 +20,6 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "technical", label: "Technical" },
 ];
-
-const priorityConfig = {
-  high: {
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
-    text: "text-red-400",
-  },
-  medium: {
-    bg: "bg-yellow-500/10",
-    border: "border-yellow-500/30",
-    text: "text-yellow-400",
-  },
-  low: {
-    bg: "bg-green-500/10",
-    border: "border-green-500/30",
-    text: "text-green-400",
-  },
-};
 
 const SmartNoticeBoard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -66,7 +39,7 @@ const SmartNoticeBoard = () => {
 
   const userId = user?.uid || user?.id || "anonymous";
 
-  // Load notices
+  // Load notices + SSE
   useEffect(() => {
     if (!authLoading && !user) {
       setLoading(false);
@@ -81,6 +54,7 @@ const SmartNoticeBoard = () => {
     const connectSSE = () => {
       eventSource = new EventSource("/api/notices/stream");
 
+      // Initial notices
       eventSource.addEventListener("initial", (e) => {
         try {
           const data = JSON.parse(e.data);
@@ -93,23 +67,26 @@ const SmartNoticeBoard = () => {
           setNotices(parsed);
           setLoading(false);
         } catch (err) {
-          console.error("Failed to parse notices:", err);
+          console.error("Failed to parse initial notices:", err);
         }
       });
 
+      // New notice
       eventSource.addEventListener("new-notice", (e) => {
         try {
-          const newNotice = JSON.parse(e.data);
+          const notice = JSON.parse(e.data);
 
           const parsedNotice = {
-            ...newNotice,
-            createdAt: new Date(newNotice.createdAt),
+            ...notice,
+            createdAt: new Date(notice.createdAt),
           };
 
           setNotices((prev) => {
-            if (prev.find((n) => n.id === parsedNotice.id)) {
-              return prev;
-            }
+            const exists = prev.some(
+              (item) => item.id === parsedNotice.id
+            );
+
+            if (exists) return prev;
 
             return [parsedNotice, ...prev];
           });
@@ -141,22 +118,20 @@ const SmartNoticeBoard = () => {
     connectSSE();
 
     // Load read notices
-    const savedReadNotices = localStorage.getItem(
-      `readNotices_${userId}`
-    );
+    try {
+      const savedReadNotices = localStorage.getItem(
+        `readNotices_${userId}`
+      );
 
-    if (savedReadNotices) {
-      try {
+      if (savedReadNotices) {
         const parsed = JSON.parse(savedReadNotices);
 
         if (Array.isArray(parsed)) {
           setReadNotices(new Set(parsed));
         }
-      } catch (err) {
-        console.error(err);
-
-        localStorage.removeItem(`readNotices_${userId}`);
       }
+    } catch (err) {
+      console.error("Failed to load read notices:", err);
     }
 
     return () => {
@@ -173,15 +148,19 @@ const SmartNoticeBoard = () => {
   // Save read state
   const saveReadState = useCallback(
     (state) => {
-      localStorage.setItem(
-        `readNotices_${userId}`,
-        JSON.stringify([...state])
-      );
+      try {
+        localStorage.setItem(
+          `readNotices_${userId}`,
+          JSON.stringify([...state])
+        );
+      } catch (err) {
+        console.error("Failed to save read state:", err);
+      }
     },
     [userId]
   );
 
-  // Mark read
+  // Mark as read
   const markAsRead = useCallback(
     (noticeId) => {
       setReadNotices((current) => {
@@ -197,7 +176,7 @@ const SmartNoticeBoard = () => {
     [saveReadState]
   );
 
-  // Mark unread
+  // Mark as unread
   const markAsUnread = useCallback(
     (noticeId) => {
       setReadNotices((current) => {
@@ -216,32 +195,43 @@ const SmartNoticeBoard = () => {
   // Relative time
   const getRelativeTime = useCallback((date) => {
     const now = new Date();
-    const diff = now.getTime() - new Date(date).getTime();
+
+    const diff =
+      now.getTime() - new Date(date).getTime();
 
     const minutes = Math.floor(diff / 60000);
 
     if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
+
+    if (minutes < 60) {
+      return `${minutes}m ago`;
+    }
 
     const hours = Math.floor(minutes / 60);
 
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) {
+      return `${hours}h ago`;
+    }
 
     const days = Math.floor(hours / 24);
 
-    if (days < 7) return `${days}d ago`;
+    if (days < 7) {
+      return `${days}d ago`;
+    }
 
     return new Date(date).toLocaleDateString();
   }, []);
 
   // Available tags
   const availableTags = useMemo(() => {
-    const tags = notices.flatMap((notice) => notice.tags || []);
+    const tags = notices.flatMap(
+      (notice) => notice.tags || []
+    );
 
     return [...new Set(tags)];
   }, [notices]);
 
-  // Search suggestions
+  // Suggestions
   const searchOptions = useMemo(() => {
     return notices.map((notice) => notice.title);
   }, [notices]);
@@ -265,22 +255,32 @@ const SmartNoticeBoard = () => {
     showOnlyUnread,
   ]);
 
-  // Filtered notices
+  // Filter notices
   const filteredNotices = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = searchQuery
+      .trim()
+      .toLowerCase();
+
     const now = Date.now();
 
     return notices
       .filter((notice) => {
+        // Search
         if (query) {
           const haystack =
-            `${notice.title} ${notice.content} ${notice.category} ${notice.tags?.join(" ")}`.toLowerCase();
+            `
+            ${notice.title}
+            ${notice.content}
+            ${notice.category}
+            ${notice.tags?.join(" ")}
+          `.toLowerCase();
 
           if (!haystack.includes(query)) {
             return false;
           }
         }
 
+        // Category
         if (
           selectedCategory !== "all" &&
           notice.category !== selectedCategory
@@ -288,6 +288,7 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
+        // Priority
         if (
           selectedPriority !== "all" &&
           notice.priority !== selectedPriority
@@ -295,6 +296,7 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
+        // Tags
         if (
           selectedTags.length > 0 &&
           !selectedTags.every((tag) =>
@@ -304,6 +306,7 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
+        // Unread
         if (
           showOnlyUnread &&
           readNotices.has(notice.id)
@@ -311,29 +314,41 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
+        // Date range
         const noticeTime = new Date(
           notice.createdAt
         ).getTime();
 
         if (dateRange === "today") {
-          return now - noticeTime <= 24 * 60 * 60 * 1000;
+          return (
+            now - noticeTime <=
+            24 * 60 * 60 * 1000
+          );
         }
 
         if (dateRange === "7d") {
-          return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
+          return (
+            now - noticeTime <=
+            7 * 24 * 60 * 60 * 1000
+          );
         }
 
         if (dateRange === "30d") {
-          return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
+          return (
+            now - noticeTime <=
+            30 * 24 * 60 * 60 * 1000
+          );
         }
 
         return true;
       })
       .sort((a, b) => {
+        // Pinned first
         if (a.isPinned !== b.isPinned) {
           return a.isPinned ? -1 : 1;
         }
 
+        // Date sort
         if (sortOrder === "oldest") {
           return (
             new Date(a.createdAt).getTime() -
@@ -376,7 +391,7 @@ const SmartNoticeBoard = () => {
     setShowOnlyUnread(false);
   }, []);
 
-  // Toggle tag
+  // Toggle tags
   const handleTagToggle = useCallback((tag) => {
     setSelectedTags((current) =>
       current.includes(tag)
@@ -385,7 +400,7 @@ const SmartNoticeBoard = () => {
     );
   }, []);
 
-  // Suggestion click
+  // Suggestion select
   const handleSuggestionSelect = useCallback(
     (suggestion) => {
       setSearchQuery(suggestion);
@@ -393,6 +408,7 @@ const SmartNoticeBoard = () => {
     []
   );
 
+  // Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
@@ -425,10 +441,12 @@ const SmartNoticeBoard = () => {
               </h1>
 
               <p className="mt-3 text-slate-400">
-                Search, filter, and manage notices in real-time.
+                Search, filter, and manage notices in
+                real-time.
               </p>
             </div>
 
+            {/* Stats */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
                 {
@@ -443,7 +461,9 @@ const SmartNoticeBoard = () => {
                 },
                 {
                   label: "Pinned",
-                  value: notices.filter((n) => n.isPinned).length,
+                  value: notices.filter(
+                    (n) => n.isPinned
+                  ).length,
                   color: "text-yellow-400",
                 },
                 {
@@ -473,7 +493,7 @@ const SmartNoticeBoard = () => {
           </div>
         </div>
 
-        {/* Main Layout */}
+        {/* Main */}
         <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
           {/* Sidebar */}
           <aside className="space-y-6">
@@ -484,15 +504,21 @@ const SmartNoticeBoard = () => {
               resultsCount={filteredNotices.length}
               activeFilterCount={activeFilterCount}
               suggestions={searchOptions}
-              onSuggestionSelect={handleSuggestionSelect}
+              onSuggestionSelect={
+                handleSuggestionSelect
+              }
             />
 
             <NoticeFilters
               categories={CATEGORIES}
               selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
+              onCategoryChange={
+                setSelectedCategory
+              }
               selectedPriority={selectedPriority}
-              onPriorityChange={setSelectedPriority}
+              onPriorityChange={
+                setSelectedPriority
+              }
               availableTags={availableTags}
               selectedTags={selectedTags}
               onTagToggle={handleTagToggle}
@@ -502,7 +528,9 @@ const SmartNoticeBoard = () => {
               onSortOrderChange={setSortOrder}
               showOnlyUnread={showOnlyUnread}
               onToggleUnread={() =>
-                setShowOnlyUnread((prev) => !prev)
+                setShowOnlyUnread(
+                  (prev) => !prev
+                )
               }
             />
           </aside>
@@ -512,7 +540,9 @@ const SmartNoticeBoard = () => {
             {filteredNotices.length === 0 ? (
               <EmptyNoticeState
                 query={searchQuery}
-                onResetFilters={handleClearFilters}
+                onResetFilters={
+                  handleClearFilters
+                }
               />
             ) : (
               <motion.div
@@ -521,9 +551,8 @@ const SmartNoticeBoard = () => {
               >
                 <AnimatePresence>
                   {filteredNotices.map((notice) => {
-                    const isRead = readNotices.has(
-                      notice.id
-                    );
+                    const isRead =
+                      readNotices.has(notice.id);
 
                     return (
                       <motion.div
@@ -550,11 +579,19 @@ const SmartNoticeBoard = () => {
                           isRead={isRead}
                           onToggleRead={() =>
                             isRead
-                              ? markAsUnread(notice.id)
-                              : markAsRead(notice.id)
+                              ? markAsUnread(
+                                  notice.id
+                                )
+                              : markAsRead(
+                                  notice.id
+                                )
                           }
-                          searchQuery={searchQuery}
-                          getRelativeTime={getRelativeTime}
+                          searchQuery={
+                            searchQuery
+                          }
+                          getRelativeTime={
+                            getRelativeTime
+                          }
                         />
                       </motion.div>
                     );
