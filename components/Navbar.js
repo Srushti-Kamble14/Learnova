@@ -18,7 +18,15 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
+const languageMap = {
+  "English": "en",
+  "Español": "es",
+  "Français": "fr",
+  "Deutsch": "de",
+  "हिन्दी": "hi"
+};
 import {
   Menu,
   X,
@@ -47,7 +55,7 @@ export function Navbar() {
   const [currentLang, setCurrentLang] = useState("English"); // Tracks selected language
   const [scrollProgress, setScrollProgress] = useState(0);
   const [mounted, setMounted] = useState(false);
-
+  const { i18n } = useTranslation();
   const {
     notifications,
     unreadCount,
@@ -314,6 +322,9 @@ export function Navbar() {
                         onClick={() => {
                           setCurrentLang(lang);
                           setIsLangOpen(false);
+                          if (i18n && i18n.changeLanguage) {
+                            i18n.changeLanguage(languageMap[lang]);
+                          }
                         }}
                         className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                           currentLang === lang
@@ -494,9 +505,12 @@ export function Navbar() {
                   <button
                     key={lang}
                     onClick={() => {
-                      setCurrentLang(lang);
-                      setIsMenuOpen(false);
-                    }}
+                          setCurrentLang(lang);
+                          setIsMenuOpen(false);
+                          if (i18n && i18n.changeLanguage) {
+                            i18n.changeLanguage(languageMap[lang]);
+                          }
+                        }}
                     className={`text-xs p-2 rounded-xl border text-center transition-all ${
                       currentLang === lang
                         ? "bg-blue-600 text-white border-blue-600 font-bold"
