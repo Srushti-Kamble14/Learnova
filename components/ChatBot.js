@@ -22,6 +22,7 @@ import {
   Clock,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useTheme } from "next-themes";
 
 // ---------------------------------------------------------------------------
 // Constants — swap out with your real import if you have one:
@@ -283,9 +284,11 @@ const LearnovaChatbot = () => {
     timestamp: new Date(),
   };
 
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark" || theme === "dark";
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -441,7 +444,7 @@ const LearnovaChatbot = () => {
           <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat">
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
+          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"}>
