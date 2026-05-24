@@ -71,6 +71,17 @@ export default function UniversalProfile() {
   const [userData, setUserData] = useState(null);
   const [stats, setStats] = useState(null);
 
+  const [formData, setFormData] = useState({
+    displayName: user?.displayName || "",
+    email: user?.email || "",
+    phone: "",
+    location: "",
+    bio: "Passionate learner exploring the world of knowledge through Learnova.",
+    website: "",
+    linkedin: "",
+    twitter: "",
+  });
+
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user?.uid) return;
@@ -81,6 +92,16 @@ export default function UniversalProfile() {
           const data = userSnap.data();
           setUserData(data); //to save the full profile data
           setRole(data.role || "student");
+          setFormData((prev) => ({
+            ...prev,
+            displayName: data.displayName || prev.displayName,
+            phone: data.phone || prev.phone,
+            location: data.location || prev.location,
+            bio: data.bio || prev.bio,
+            website: data.website || prev.website,
+            linkedin: data.linkedin || prev.linkedin,
+            twitter: data.twitter || prev.twitter,
+          }));
         }
 
         // Fetch dashboard statistics from the userStats collection
@@ -96,17 +117,6 @@ export default function UniversalProfile() {
     fetchUserData();
   }, [user]);
 
-  const [formData, setFormData] = useState({
-    displayName: user?.displayName || "",
-    email: user?.email || "",
-    phone: "",
-    location: "",
-    bio: "Passionate learner exploring the world of knowledge through Learnova.",
-    website: "",
-    linkedin: "",
-    twitter: "",
-  });
-
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -114,8 +124,31 @@ export default function UniversalProfile() {
     });
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!user) return;
+    const loadingToast = toast.loading("Saving profile...");
+    try {
+      if (formData.displayName && formData.displayName !== user.displayName) {
+        await updateProfile(user, { displayName: formData.displayName });
+      }
+
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        displayName: formData.displayName,
+        phone: formData.phone || "",
+        location: formData.location || "",
+        bio: formData.bio || "",
+        website: formData.website || "",
+        linkedin: formData.linkedin || "",
+        twitter: formData.twitter || "",
+      });
+
+      setUserData((prev) => ({ ...prev, ...formData }));
+      toast.success("Profile saved successfully!", { id: loadingToast });
+      setIsEditing(false);
+    } catch (error) {
+      toast.error(error.message || "Failed to save profile.", { id: loadingToast });
+    }
   };
 
   const handleImageUpload = () => {
