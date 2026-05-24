@@ -24,9 +24,10 @@ import {
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
-import Navbar from "./Navbar";
+import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
+import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
 import {
@@ -58,7 +59,12 @@ const StudentDashboard = () => {
     present: 18,
     absent: 2,
     late: 1,
-    percentage: 90,
+    percentage: 92,
+  };
+
+  const attendancePerformance = {
+    attendancePercentage: attendanceStats.percentage,
+    streakDays: 8,
   };
 
   useEffect(() => {
@@ -409,6 +415,11 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
+
+            <AchievementSection
+              attendancePercentage={attendancePerformance.attendancePercentage}
+              streakDays={attendancePerformance.streakDays}
+            />
 
             {/* Activity */}
             <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
