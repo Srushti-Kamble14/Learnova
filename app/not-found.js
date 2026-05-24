@@ -94,7 +94,7 @@ export default function NotFound() {
         </div>
       </div>
 
-      <main className="relative z-10 flex min-h-screen items-center justify-center px-6 py-24 text-center text-white">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-24 text-center text-white">
         <div className="w-full max-w-2xl space-y-8">
           <div className="inline-flex rounded-full border border-red-500/20 bg-red-500/10 px-4 py-1 text-sm text-red-400">
             Error 404
@@ -138,7 +138,7 @@ export default function NotFound() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
 
       <style jsx>{`
         @keyframes float {
