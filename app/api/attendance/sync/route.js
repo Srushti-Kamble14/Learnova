@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,7 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
 
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 100);
   const { records } = syncSchema.parse(body);
 
   initFirebaseAdmin();

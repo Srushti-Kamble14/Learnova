@@ -1,5 +1,5 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { awardXp } from "@/lib/gamification-service";
@@ -8,7 +8,7 @@ export const POST = withErrorHandler(async (request) => {
   // 1. Secure token validation ensures only logged-in users can ping this route
   const decodedToken = await authenticateRequest(request);
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024);
   const { userId, studentName, email, confidenceScore, date } = body;
   const normalizedDate = (date || new Date().toISOString().slice(0, 10)).toString();
 
