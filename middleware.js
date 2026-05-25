@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { jwtVerify, createRemoteJWKSet } from "jose";
-
-// Firebase publishes RS256 public keys here; rotate every ~6 hours
-const JWKS_URL = new URL(
-  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
-);
-const JWKS = createRemoteJWKSet(JWKS_URL);
-
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 function buildPageCsp() {
   const frameSrc = [
@@ -41,8 +34,7 @@ function buildPageCsp() {
 }
 
 /**
- * Verifies a Firebase ID token's RS256 signature and all standard claims.
- * Runs entirely in the Edge Runtime using the jose library.
+ * Verifies a Firebase ID token by delegating validation to Firebase Auth REST API.
  * Fails closed: any error returns null (deny access).
  *
  * @param {string} token - The Firebase ID token from the authToken cookie
@@ -50,24 +42,50 @@ function buildPageCsp() {
  */
 async function verifyIdToken(token) {
   try {
-    if (!FIREBASE_PROJECT_ID) return null;
+    if (!FIREBASE_PROJECT_ID || !FIREBASE_API_KEY) return null;
 
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-      audience: FIREBASE_PROJECT_ID,
-      algorithms: ["RS256"],
-      clockTolerance: 300,
-    });
-    
-    // Validate standard JWT claims as required by the Firebase ID token spec
-    const now = Math.floor(Date.now() / 1000);
-    if (!payload.sub || payload.iat > now) {
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: token }),
+      }
+    );
+
+    if (!response.ok) {
       return null;
     }
 
+    const data = await response.json().catch(() => null);
+    const user = data?.users?.[0];
+    if (!user?.localId) return null;
+
+    let parsedCustomClaims = {};
+    if (user.customAttributes) {
+      try {
+        parsedCustomClaims = JSON.parse(user.customAttributes);
+      } catch {
+        parsedCustomClaims = {};
+      }
+    }
+
+    const authTimeSeconds = user.lastLoginAt
+      ? Math.floor(Number(user.lastLoginAt) / 1000)
+      : undefined;
+
+    const payload = {
+      sub: user.localId,
+      uid: user.localId,
+      email: user.email,
+      email_verified: user.emailVerified === true,
+      role: parsedCustomClaims?.role,
+      iat: authTimeSeconds,
+    };
+
     return payload;
   } catch {
-    // Network errors, malformed JSON, or crypto failures all result in denial
+    // Network errors, malformed JSON, or upstream failures all result in denial
     return null;
   }
 }
