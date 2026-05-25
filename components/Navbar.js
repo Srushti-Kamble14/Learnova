@@ -444,7 +444,43 @@ export function Navbar() {
                 <div className="w-24 h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
               ) : isAuthenticated ? (
                 <div className="flex items-center space-x-3 pl-1 border-l border-zinc-200 dark:border-zinc-800">
-                  <NotificationBell />
+                  
+                  {/* Notifications Module Panel */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                      className="relative p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                      aria-label="View notifications"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
+                    </button>
+
+                    {isNotificationOpen && (
+                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
+                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <button onClick={markAllAsRead} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
+                          {notifications.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
+                          ) : (
+                            notifications.map((n) => (
+                              <button key={n.id} onClick={() => markAsRead(n.id)} role="button" 
+                              className={`w-full p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 block focus:outline-none focus:ring-1 focus:ring-blue-500/50 ${!n.read ? "bg-blue-50/30" : ""}`}>
+                              <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
