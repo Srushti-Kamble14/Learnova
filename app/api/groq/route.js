@@ -150,30 +150,10 @@ export async function POST(request) {
         502
       );
     }
-
-  const rateLimitResult = await checkRateLimit(decodedToken.uid);
-  if (!rateLimitResult.allowed) {
-    return jsonError(
-      "Too many requests. Please try again later.",
-      429
-    );
+    return jsonSuccess({
+      message: content,
+    });
+  } catch (err) {
+    return jsonError(err?.message || "Server error", 500);
   }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    throw new ValidationError("Invalid request payload");
-  }
-
-  const { trimmedMessage } = validateGroqBody(body);
-  const content = await callGroq(trimmedMessage);
-
-  console.log(
-    `[nova-ai-quota-tracker] Success for ${decodedToken.uid}`
-  );
-
-  return jsonSuccess({
-    message: content,
-  });
-});
+}
