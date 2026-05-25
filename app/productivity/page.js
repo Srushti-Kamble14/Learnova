@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 import {
   CalendarDays,
   CheckCircle2,
@@ -107,11 +106,7 @@ export default function ProductivityPage() {
   const [calendarFilter, setCalendarFilter] = useState("all");
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "Prep lesson plan", done: false, priority: "medium" },
-    { id: 2, text: "Review student analytics", done: true, priority: "low" },
-    { id: 3, text: "Create quick quiz", done: false, priority: "high" },
-  ]);
+  const [tasks, setTasks] = useState([]);
   const [agendaInput, setAgendaInput] = useState("");
   const [agendaLabel, setAgendaLabel] = useState("Focus");
   const [agendaItems, setAgendaItems] = useState({});
@@ -121,6 +116,8 @@ export default function ProductivityPage() {
   const [recentCompleted, setRecentCompleted] = useState(false);
   const audioContextRef = useRef(null);
   const soundscapeRef = useRef(null);
+  const syncTimerRef = useRef(null);
+  const isSyncingRef = useRef(false);
 
   const calendar = useMemo(() => buildCalendar(monthOffset), [monthOffset]);
   const now = new Date();
@@ -135,54 +132,112 @@ export default function ProductivityPage() {
     });
   }, [selectedDateKey]);
 
+  /** Syncs current tasks and agenda to the API. Writes to localStorage first for instant persistence. */
+  const syncToApi = useCallback(
+    async (currentTasks, currentAgenda) => {
+      try {
+        localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
+        localStorage.setItem(AGENDA_KEY, JSON.stringify(currentAgenda));
+      } catch (_) {
+        // localStorage may be full or unavailable
+      }
+
+      if (!user || isSyncingRef.current) return;
+      isSyncingRef.current = true;
+
+      try {
+        const token = await user.getIdToken();
+        await fetch("/api/productivity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ tasks: currentTasks, agendaItems: currentAgenda }),
+        });
+      } catch (_) {
+        // Offline or API error — localStorage already has the data
+      } finally {
+        isSyncingRef.current = false;
+      }
+    },
+    [user]
+  );
+
+  /** Schedules a debounced API sync. Cancels any pending sync to avoid spamming. */
+  const debouncedSync = useCallback(
+    (currentTasks, currentAgenda) => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        syncToApi(currentTasks, currentAgenda);
+      }, 2000);
+    },
+    [syncToApi]
+  );
+
   useEffect(() => {
     async function loadData() {
       if (!user) {
+        try {
+          const savedTasks = localStorage.getItem(TASKS_KEY);
+          const savedAgenda = localStorage.getItem(AGENDA_KEY);
+          if (savedTasks) setTasks(JSON.parse(savedTasks));
+          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
+        } catch (_) {
+          // Corrupted localStorage — use empty defaults
+        }
         setDataLoaded(true);
         return;
       }
+
       try {
-        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.tasks) setTasks(data.tasks);
-          if (data.agendaItems) setAgendaItems(data.agendaItems);
+        const token = await user.getIdToken();
+        const res = await fetch("/api/productivity", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tasks?.length > 0) setTasks(data.tasks);
+          if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
+            setAgendaItems(data.agendaItems);
+          }
+        } else {
+          throw new Error("API returned non-ok");
         }
-      } catch (error) {
-        console.error("Failed to load productivity data from Firestore", error);
+      } catch (_) {
+        try {
+          const savedTasks = localStorage.getItem(TASKS_KEY);
+          const savedAgenda = localStorage.getItem(AGENDA_KEY);
+          if (savedTasks) setTasks(JSON.parse(savedTasks));
+          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
+        } catch (__) {
+          // Corrupted localStorage — use empty defaults
+        }
       } finally {
         setDataLoaded(true);
       }
     }
+
     loadData();
   }, [user]);
 
   useEffect(() => {
-    if (!user || !dataLoaded) return;
-    const saveTasks = async () => {
-      try {
-        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
-        await setDoc(docRef, { tasks }, { merge: true });
-      } catch (e) {
-        console.error("Error saving tasks to Firestore", e);
-      }
-    };
-    saveTasks();
-  }, [tasks, user, dataLoaded]);
+    if (!dataLoaded) return;
+    debouncedSync(tasks, agendaItems);
+  }, [tasks, agendaItems, dataLoaded, debouncedSync]);
 
   useEffect(() => {
-    if (!user || !dataLoaded) return;
-    const saveAgenda = async () => {
-      try {
-        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
-        await setDoc(docRef, { agendaItems }, { merge: true });
-      } catch (e) {
-        console.error("Error saving agenda to Firestore", e);
+    /** Re-sync pending localStorage data when the browser comes back online. */
+    function handleOnline() {
+      if (dataLoaded) {
+        syncToApi(tasks, agendaItems);
       }
-    };
-    saveAgenda();
-  }, [agendaItems, user, dataLoaded]);
+    }
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [tasks, agendaItems, dataLoaded, syncToApi]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -201,17 +256,52 @@ export default function ProductivityPage() {
     return () => clearInterval(timerId);
   }, [isRunning]);
 
+  /** Records a completed Pomodoro session to the API. */
+  const recordSession = useCallback(
+    async (duration, type) => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/productivity/session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            duration,
+            completedAt: new Date().toISOString(),
+            type,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.xpAwarded > 0) {
+            toast.success(`+${data.xpAwarded} XP earned!`);
+          }
+        }
+      } catch (_) {
+        // Offline — session not recorded, but timer continues
+      }
+    },
+    [user]
+  );
+
   useEffect(() => {
     if (timeLeft !== 0) {
       return;
     }
 
     setIsRunning(false);
+    const sessionDuration = Math.round(sessionSeconds / 60);
+
     if (mode === "focus") {
       const nextFocusCount = focusSessions + 1;
       setFocusSessions(nextFocusCount);
       setRecentCompleted(true);
       setTimeout(() => setRecentCompleted(false), 1400);
+      recordSession(sessionDuration, "focus");
       const nextMode = nextFocusCount % 4 === 0 ? "long" : "short";
       const nextSeconds = MODES[nextMode].seconds;
       setMode(nextMode);
@@ -219,13 +309,14 @@ export default function ProductivityPage() {
       setManualMinutes(String(Math.round(nextSeconds / 60)));
       setTimeLeft(nextSeconds);
     } else {
+      recordSession(sessionDuration, "break");
       const focusSeconds = MODES.focus.seconds;
       setMode("focus");
       setSessionSeconds(focusSeconds);
       setManualMinutes(String(Math.round(focusSeconds / 60)));
       setTimeLeft(focusSeconds);
     }
-  }, [timeLeft, mode, focusSessions]);
+  }, [timeLeft, mode, focusSessions, sessionSeconds, recordSession]);
 
   useEffect(() => {
     setAmbientMode(mode);
@@ -625,7 +716,7 @@ export default function ProductivityPage() {
                   <div className="flex items-center gap-6">
                     <div className="relative h-32 w-32">
                       <div
-                        className="absolute inset-0 rounded-full border-4 border-white/10"
+                        className="absolute inset-0 rounded-full border-4 border-slate-200/40 dark:border-white/10"
                         aria-hidden="true"
                       />
                       <div
@@ -635,7 +726,7 @@ export default function ProductivityPage() {
                             }deg, rgba(255,255,255,0.08) 0deg)`,
                         }}
                       />
-                      <div className="absolute inset-2 rounded-full bg-slate-950/70 flex items-center justify-center">
+                      <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
                         <span className={`text-3xl font-bold ${MODES[mode].accent}`}>
                           {formatTime(timeLeft)}
                         </span>
@@ -685,7 +776,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     >
                       <label
                         htmlFor="pomodoro-minutes"
-                        className="text-xs text-slate-300"
+                        className="text-xs text-slate-700 dark:text-slate-300"
                       >
                         Minutes
                       </label>
@@ -934,7 +1025,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     <div className="mt-2 text-2xl font-semibold text-emerald-200">
                       {taskCompletion}%
                     </div>
-                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
                         style={{ width: `${taskCompletion}%` }}
@@ -947,7 +1038,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     } p-4`}>
                     <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Soundscape</p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <SoundscapeIcon className="w-4 h-4 text-purple-200" />
+                      <SoundscapeIcon className="w-4 h-4 text-purple-500" />
                       {soundscapeOn ? "On" : "Off"}
                     </div>
                     <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
@@ -1033,7 +1124,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     <span>Completion</span>
                     <span>{taskCompletion}%</span>
                   </div>
-                  <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
                       style={{ width: `${taskCompletion}%` }}
@@ -1203,7 +1294,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                       </button>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-2 flex-1 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                         <div
                           className={`h-full w-2/3 ${soundscapeOn
                               ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
@@ -1381,7 +1472,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                       {completedTasks} / {tasks.length}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
                       style={{ width: `${taskCompletion}%` }}
