@@ -25,6 +25,7 @@
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-slot": "^1.2.3",
+    "@tailwindcss/typography": "^0.5.19",
     "@vercel/blob": "^2.4.0",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
