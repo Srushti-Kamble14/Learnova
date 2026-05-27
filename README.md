@@ -173,7 +173,7 @@ npm install
 ```
 
 <details>
-<summary>▶️ <b>Windows 11 (or any OS) with pnpm</b></summary>
+<summary>▶️ <b>Windows(or any OS) with pnpm</b></summary>
 
 ```bash
 pnpm install
