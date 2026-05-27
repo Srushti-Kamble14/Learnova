@@ -73,7 +73,7 @@ function NavLink({ href, label, isActive }) {
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      className="relative text-sm font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors duration-300 ease-out group"
+      className="relative text-sm font-semibold tracking-wide px-4 py-2 rounded-xl group after:content-[''] after:absolute after:bottom-1 after:left-3 after:right-3 after:h-[3px] after:rounded-full after:bg-gradient-to-r after:from-blue-500 after:via-cyan-400 after:to-violet-500 after:shadow-sm after:shadow-blue-500/30 after:pointer-events-none after:will-change-transform after:origin-left after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.4,0,0.2,1)] after:scale-x-0 group-hover:after:scale-x-100"
     >
       {isActive && (
         <motion.span
@@ -82,19 +82,13 @@ function NavLink({ href, label, isActive }) {
           transition={{ type: "spring", bounce: 0.2, duration: 0.45 }}
         />
       )}
-      <span className="absolute inset-0 rounded-xl bg-zinc-200/0 group-hover:bg-zinc-200/60 dark:group-hover:bg-white/5 transition-colors duration-300 ease-out" />
-      <span className={`relative z-10 ${isActive
+      <span className="absolute inset-0 rounded-xl bg-zinc-200/60 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out" />
+      <span className={`relative z-10 transition-colors duration-300 ${isActive
           ? "text-blue-600 dark:text-blue-400"
           : "text-zinc-700 dark:text-zinc-300 group-hover:text-blue-600 dark:group-hover:text-blue-300"
         }`}>
         {label}
       </span>
-      <span
-        className={`absolute bottom-1 left-3 right-3 h-[3px] origin-center rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 shadow-sm shadow-blue-500/30 transition-all duration-300 ease-out ${isActive
-            ? "scale-x-100 opacity-100"
-            : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-90"
-          }`}
-      />
     </Link>
   );
 }
