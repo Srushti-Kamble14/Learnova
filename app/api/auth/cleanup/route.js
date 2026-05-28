@@ -1,7 +1,8 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,6 +16,8 @@ export const runtime = "nodejs";
  * needs to be cleaned up to prevent orphaned accounts.
  */
 export const POST = withErrorHandler(async (request) => {
+  const user = await authenticateRequest(request);
+
   const body = await request.json();
   const { uid } = body;
 
@@ -22,16 +25,21 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("Invalid or missing UID parameter", 400);
   }
 
+  // Ensure user is authorized to delete the account
+  if (user.uid !== uid) {
+    return jsonError("Forbidden: Cannot delete another user's account", 403);
+  }
+
   try {
     initializeFirebase();
     
-    console.log(`[auth-cleanup] Attempting to delete orphaned account: ${uid}`);
+    logger.info(`[auth-cleanup] Attempting to delete orphaned account: ${uid}`);
     
     // Delete the user from Firebase Auth using Admin SDK
     // This bypasses the re-authentication requirement
     await admin.auth().deleteUser(uid);
     
-    console.log(`[auth-cleanup] Successfully deleted orphaned account: ${uid}`);
+    logger.info(`[auth-cleanup] Successfully deleted orphaned account: ${uid}`);
     
     return jsonSuccess({ 
       message: "Orphaned auth account deleted successfully",
@@ -40,14 +48,14 @@ export const POST = withErrorHandler(async (request) => {
   } catch (error) {
     // Don't throw if user doesn't exist - they may have been already cleaned up
     if (error.code === "auth/user-not-found") {
-      console.warn(`[auth-cleanup] User ${uid} not found - may have been already cleaned up`);
+      logger.warn(`[auth-cleanup] User ${uid} not found - may have been already cleaned up`);
       return jsonSuccess({ 
         message: "User already deleted or not found",
         uid 
       });
     }
 
-    console.error(`[auth-cleanup] Failed to delete orphaned account ${uid}:`, error.message);
+    logger.error(`[auth-cleanup] Failed to delete orphaned account ${uid}: ${error.message}`);
     
     // Log for manual cleanup but don't expose internal error details
     return jsonError("Failed to cleanup orphaned account. Please contact support.", 500);
