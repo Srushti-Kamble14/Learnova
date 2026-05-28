@@ -173,6 +173,7 @@ export default function AuthForm({
                 type="email"
                 name="email"
                 autoComplete="email"
+                maxLength={254}
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => {
@@ -199,6 +200,7 @@ export default function AuthForm({
                 type={showPassword ? "text" : "password"}
                 name="password"
                 autoComplete={isLogin ? "current-password" : "new-password"}
+                maxLength={254}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => {
