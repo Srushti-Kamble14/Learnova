@@ -33,6 +33,9 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
+import { motion } from "framer-motion";
+import i18n from "@/lib/i18n";
+import { useTranslation } from "react-i18next";
 
 const SettingCard = ({ children, title, description }) => (
   <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
@@ -72,6 +75,7 @@ const ToggleSwitch = ({ enabled, onChange, label, description }) => (
 export default function UniversalSettings() {
   const { user } = useAuth();
   const { setTheme } = useTheme();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -108,7 +112,7 @@ export default function UniversalSettings() {
         toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.register("/sw.js")
-            .then((reg) => console.log("Service Worker registered:", reg.scope))
+            .then((reg) => {})
             .catch((err) => console.error("SW Registration failed:", err));
         }
       } else if (permission === "denied") {
@@ -286,7 +290,7 @@ export default function UniversalSettings() {
     learning: roleSpecificSettings.learning,
     appearance: {
       theme: "dark",
-      language: "English",
+      language: "en",
       timezone: "UTC-8",
     },
   });
@@ -374,11 +378,69 @@ export default function UniversalSettings() {
       learning: roleSpecificSettings.learning,
       appearance: {
         theme: "dark",
-        language: "English",
+        language: "en",
         timezone: "UTC-8",
       },
     });
     setHasChanges(false);
+  };
+
+  const handleResetToDefaults = () => {
+    try {
+      // 1. Clear settings-related keys in localStorage safely
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem("theme");
+        window.localStorage.removeItem("settings");
+        window.localStorage.removeItem("learnova_settings");
+      }
+
+      // 2. Revert theme in next-themes provider to default 'dark'
+      setTheme("dark");
+
+      // 3. Reset settings state to initial default values
+      setSettings({
+        profile: {
+          name: getUserDisplayName(),
+          email: getUserEmail(),
+          phone: user?.phone || "",
+          bio:
+            user?.bio ||
+            "Passionate learner exploring new technologies and skills.",
+          avatar: getUserPhoto() || "/user-avatar.jpg",
+        },
+        notifications: roleSpecificSettings.notifications,
+        privacy: {
+          profileVisibility: "public",
+          showProgress: true,
+          showAchievements: true,
+          allowMessages: true,
+          dataCollection: true,
+        },
+        learning: roleSpecificSettings.learning,
+        appearance: {
+          theme: "dark",
+          language: "en",
+          timezone: "UTC-8",
+        },
+      });
+
+      // 4. Mark change indicators as false
+      setHasChanges(false);
+
+      // 5. Show beautiful success notification
+      toast.success("Settings restored to system defaults!", {
+        icon: "🔄",
+        style: {
+          borderRadius: "16px",
+          background: "#1e293b",
+          color: "#fff",
+          border: "1px solid rgba(255,255,255,0.1)",
+        },
+      });
+    } catch (err) {
+      console.error("Failed to reset settings to defaults:", err);
+      toast.error("Failed to reset settings. Please try again.");
+    }
   };
 
   const sections = [
@@ -435,7 +497,7 @@ export default function UniversalSettings() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <Settings className="h-8 w-8 mr-3 text-blue-400" />
-              Settings
+              {t("settings")}
               <Sparkles className="ml-3 h-6 w-6 text-yellow-400 animate-pulse" />
             </h1>
             <p className="text-white/60">
@@ -503,7 +565,7 @@ export default function UniversalSettings() {
                         {getUserPhoto() ? (
                           <Image
                             src={getUserPhoto() || "/placeholder.svg"}
-                            alt="Profile"
+                            alt={`${getUserDisplayName()} profile photo`}
                             width={200}
                             height={200}
                             className="w-20 h-20 rounded-full border-2 border-white/20 object-cover"
@@ -934,28 +996,54 @@ export default function UniversalSettings() {
                     </label>
                     <div className="grid grid-cols-3 gap-4">
                       {[
-                        { value: "light", label: "Light", icon: Sun },
-                        { value: "dark", label: "Dark", icon: Moon },
-                        { value: "system", label: "System", icon: Monitor },
-                      ].map((theme) => (
-                        <button
-                          key={theme.value}
-                          onClick={() => {
-                            updateSetting("appearance", "theme", theme.value);
-                            setTheme(theme.value);
-                          }}
-                          className={`flex flex-col items-center space-y-2 p-4 rounded-lg border transition-all duration-200 ${
-                            settings.appearance.theme === theme.value
-                              ? "border-blue-500 bg-blue-500/20"
-                              : "border-white/20 bg-white/5 hover:bg-white/10"
-                          }`}
-                        >
-                          <theme.icon className="h-6 w-6 text-white" />
-                          <span className="text-white text-sm font-medium">
-                            {theme.label}
-                          </span>
-                        </button>
-                      ))}
+                        { value: "light", label: "Light", icon: Sun, color: "text-amber-400 group-hover:text-amber-300" },
+                        { value: "dark", label: "Dark", icon: Moon, color: "text-violet-400 group-hover:text-violet-300" },
+                        { value: "system", label: "System", icon: Monitor, color: "text-blue-400 group-hover:text-blue-300" },
+                      ].map((themeOpt) => {
+                        const isSelected = settings.appearance.theme === themeOpt.value;
+                        return (
+                          <motion.button
+                            key={themeOpt.value}
+                            onClick={() => {
+                              updateSetting("appearance", "theme", themeOpt.value);
+                              setTheme(themeOpt.value);
+                            }}
+                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${
+                              isSelected
+                                ? "border-blue-500/80 bg-blue-500/10 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)]"
+                                : "border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+                            }`}
+                            whileHover="hover"
+                            whileTap="tap"
+                            animate={isSelected ? "selected" : "unselected"}
+                            variants={{
+                              hover: { scale: 1.04, y: -2 },
+                              tap: { scale: 0.96 }
+                            }}
+                          >
+                            {/* Glow spot */}
+                            {isSelected && (
+                              <span className="absolute -inset-px rounded-2xl bg-gradient-to-tr from-blue-500/10 to-purple-500/10 opacity-100 pointer-events-none" />
+                            )}
+                            <motion.div
+                              variants={{
+                                hover: { scale: 1.15, rotate: themeOpt.value === "light" ? 45 : themeOpt.value === "dark" ? -15 : 0 }
+                              }}
+                              transition={{ type: "spring", stiffness: 200, damping: 12 }}
+                              className={`p-2.5 rounded-xl ${
+                                isSelected 
+                                  ? "bg-blue-500/20" 
+                                  : "bg-white/5 group-hover:bg-white/10"
+                              } transition-colors duration-300`}
+                            >
+                              <themeOpt.icon className={`h-6 w-6 transition-colors duration-300 ${isSelected ? "text-white" : themeOpt.color}`} />
+                            </motion.div>
+                            <span className="text-sm font-semibold tracking-wide block">
+                              {themeOpt.label}
+                            </span>
+                          </motion.button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -966,20 +1054,17 @@ export default function UniversalSettings() {
                       </label>
                       <select
                         value={settings.appearance.language}
-                        onChange={(e) =>
-                          updateSetting(
-                            "appearance",
-                            "language",
-                            e.target.value,
-                          )
-                        }
+                        onChange={(e) => {
+                          updateSetting("appearance", "language", e.target.value);
+                          i18n.changeLanguage(e.target.value);
+                        }}
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="English" className="bg-slate-950 text-white">English</option>
-                        <option value="Spanish" className="bg-slate-950 text-white">Español</option>
-                        <option value="French" className="bg-slate-950 text-white">Français</option>
-                        <option value="German" className="bg-slate-950 text-white">Deutsch</option>
-                        <option value="Chinese" className="bg-slate-950 text-white">中文</option>
+                        <option value="en" className="bg-slate-950 text-white">English</option>
+                        <option value="es" className="bg-slate-950 text-white">Español</option>
+                        <option value="fr" className="bg-slate-950 text-white">Français</option>
+                        <option value="de" className="bg-slate-950 text-white">Deutsch</option>
+                        <option value="zh" className="bg-slate-950 text-white">中文</option>
                       </select>
                     </div>
                     <div>
@@ -1053,6 +1138,30 @@ export default function UniversalSettings() {
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Clear
+                      </Button>
+                    </div>
+                  </div>
+                </SettingCard>
+
+                <SettingCard
+                  title="Preference Reset"
+                  description="Restore all settings, appearance parameters, and notification choices to system defaults"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div>
+                        <p className="text-white font-medium">Reset Settings</p>
+                        <p className="text-white/60 text-sm">
+                          Revert all configurations back to system default values
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleResetToDefaults}
+                        variant="outline"
+                        className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 bg-transparent"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset to Defaults
                       </Button>
                     </div>
                   </div>
