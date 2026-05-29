@@ -50,11 +50,23 @@ export async function POST(request) {
     const firebaseData = await firebaseRes.json();
 
     if (!firebaseRes.ok) {
+      if (firebaseData.error?.message === "EMAIL_NOT_FOUND") {
+        // Prevent user enumeration: pretend it succeeded
+        return NextResponse.json({ 
+          success: true, 
+          message: "If an account exists with this email, a password reset link has been sent." 
+        });
+      }
+
       // Log the actual error internally for debugging, but do NOT expose it to the client
       console.warn("Password reset upstream error:", firebaseData.error?.message);
+      return NextResponse.json(
+        { success: false, error: "Failed to send reset email due to a server error. Please try again later." },
+        { status: 500 }
+      );
     }
 
-    // Always return a generic success message to prevent user enumeration attacks
+    // Always return a generic success message
     return NextResponse.json({ 
       success: true, 
       message: "If an account exists with this email, a password reset link has been sent." 
