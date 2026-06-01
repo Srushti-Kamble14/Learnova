@@ -14,18 +14,9 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export const POST = async (request) => {
-  try {
-    const decodedToken = await requireAuth(request);
-
-    const rateLimitResult = await checkRateLimit(
-      `avatar_upload_${decodedToken.uid}`
-    );
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-
-  const ip =
-    request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
 
   const rateLimitResult = await checkRateLimit(
     `avatar_upload_${ip}_${decodedToken.uid}`
@@ -46,7 +37,6 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError("File size exceeds 5MB limit");
   }
 
-  // Upload to Vercel Blob instead of storing base64 in MongoDB
   const { blobUrl } = await uploadAvatarToBlob({
     file,
     uid: decodedToken.uid,
@@ -59,7 +49,6 @@ export const POST = withErrorHandler(async (request) => {
       faceDescriptor: null,
     });
   } catch (error) {
-    // Roll back blob upload on DB failure
     await del(blobUrl).catch(() => {});
     throw error;
   }
